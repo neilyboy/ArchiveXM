@@ -60,7 +60,8 @@ function JukeboxPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeView, setActiveView] = useState('tracks') // tracks, playlist
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
-  const [showQueue, setShowQueue] = useState(true) // Show queue by default
+  const [showQueue, setShowQueue] = useState(false) // Hidden by default on mobile
+  const [showSidebar, setShowSidebar] = useState(false) // Mobile sidebar toggle
   
   // Playlist modal
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
@@ -417,14 +418,30 @@ function JukeboxPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Mobile Sidebar Overlay */}
+        {showSidebar && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+        
         {/* Sidebar */}
-        <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+        <div className={`fixed md:relative inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 flex flex-col transform transition-transform duration-200 md:translate-x-0 ${
+          showSidebar ? 'translate-x-0' : '-translate-x-full'
+        } md:flex`}>
           {/* Logo/Title with back link */}
-          <div className="p-4 border-b border-gray-800">
+          <div className="p-4 border-b border-gray-800 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <img src="/logo.png" alt="ArchiveXM" className="w-8 h-8 rounded" />
               <span className="text-lg font-bold text-white">ArchiveXM</span>
             </Link>
+            <button 
+              onClick={() => setShowSidebar(false)}
+              className="md:hidden text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
           
           {/* Back to Channels link */}
@@ -561,39 +578,67 @@ function JukeboxPage() {
         {/* Main Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b border-gray-800 flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search tracks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary"
-              />
+          <div className="p-3 sm:p-4 border-b border-gray-800">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
+              >
+                <List className="w-5 h-5" />
+              </button>
+              
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary"
+                />
+              </div>
+              
+              {/* Desktop buttons */}
+              <button
+                onClick={scanLibrary}
+                disabled={scanning}
+                className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">{scanning ? 'Scanning...' : 'Scan'}</span>
+              </button>
+              <button
+                onClick={handlePlayAll}
+                className="hidden xs:flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                <span className="hidden sm:inline">Play All</span>
+              </button>
+              <button
+                onClick={handleShuffleAll}
+                className="hidden xs:flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                <Shuffle className="w-4 h-4" />
+                <span className="hidden sm:inline">Shuffle</span>
+              </button>
+              
+              {/* Mobile action buttons */}
+              <div className="flex xs:hidden items-center gap-1">
+                <button
+                  onClick={handlePlayAll}
+                  className="p-2 bg-primary hover:bg-primary/80 text-white rounded-lg"
+                >
+                  <Play className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleShuffleAll}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
+                >
+                  <Shuffle className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={scanLibrary}
-              disabled={scanning}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
-              <span>{scanning ? 'Scanning...' : 'Scan Library'}</span>
-            </button>
-            <button
-              onClick={handlePlayAll}
-              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              <span>Play All</span>
-            </button>
-            <button
-              onClick={handleShuffleAll}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
-            >
-              <Shuffle className="w-4 h-4" />
-              <span>Shuffle</span>
-            </button>
           </div>
 
           {/* Track List */}
@@ -602,14 +647,14 @@ function JukeboxPage() {
               <table className="w-full">
                 <thead className="sticky top-0 bg-gray-900 text-left text-sm text-gray-400 border-b border-gray-800">
                   <tr>
-                    <th className="px-4 py-3 w-12">#</th>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3">Artist</th>
-                    <th className="px-4 py-3">Album</th>
-                    <th className="px-4 py-3 w-20">
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 w-10 sm:w-12">#</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3">Title</th>
+                    <th className="hidden md:table-cell px-4 py-3">Artist</th>
+                    <th className="hidden lg:table-cell px-4 py-3">Album</th>
+                    <th className="hidden sm:table-cell px-4 py-3 w-16 sm:w-20">
                       <Clock className="w-4 h-4" />
                     </th>
-                    <th className="px-4 py-3 w-20"></th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 w-12 sm:w-20"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -622,7 +667,7 @@ function JukeboxPage() {
                       onClick={(e) => handleTrackClick(e, track, index)}
                       onDoubleClick={() => handlePlayTrack(track, index, filteredTracks)}
                     >
-                      <td className="px-4 py-3 text-gray-500">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-500">
                         {currentTrack?.id === track.id && isPlaying ? (
                           <div className="flex items-center gap-0.5">
                             <span className="w-1 h-3 bg-primary rounded-full animate-pulse"></span>
@@ -638,9 +683,9 @@ function JukeboxPage() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
                             {track.cover_art_path ? (
                               <img 
                                 src={libraryApi.getCoverUrl(track.id)} 
@@ -649,28 +694,34 @@ function JukeboxPage() {
                                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                               />
                             ) : null}
-                            <Music className={`w-5 h-5 text-gray-600 ${track.cover_art_path ? 'hidden' : ''}`} />
+                            <Music className={`w-4 sm:w-5 h-4 sm:h-5 text-gray-600 ${track.cover_art_path ? 'hidden' : ''}`} />
                           </div>
-                          <span className="text-white font-medium truncate">
-                            {track.title || track.filename}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-white text-sm sm:text-base font-medium truncate block">
+                              {track.title || track.filename}
+                            </span>
+                            {/* Show artist on mobile under title */}
+                            <span className="md:hidden text-gray-400 text-xs truncate block">
+                              {track.artist || 'Unknown'}
+                            </span>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 truncate">{track.artist || 'Unknown'}</td>
-                      <td className="px-4 py-3 text-gray-400 truncate">{track.album || '-'}</td>
-                      <td className="px-4 py-3 text-gray-500">{formatTime(track.duration_seconds)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="hidden md:table-cell px-4 py-3 text-gray-400 truncate">{track.artist || 'Unknown'}</td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-gray-400 truncate">{track.album || '-'}</td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-gray-500 text-sm">{formatTime(track.duration_seconds)}</td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        <div className="flex items-center gap-1 sm:gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); addToQueue(track) }}
-                            className="text-gray-500 hover:text-white"
+                            className="p-1 text-gray-500 hover:text-white"
                             title="Add to queue"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setTrackToAdd(track) }}
-                            className="text-gray-500 hover:text-white"
+                            className="hidden sm:block p-1 text-gray-500 hover:text-white"
                             title="Add to playlist"
                           >
                             <ListPlus className="w-4 h-4" />
@@ -806,9 +857,15 @@ function JukeboxPage() {
           </div>
         </div>
 
-        {/* Queue Panel */}
+        {/* Queue Panel - Full overlay on mobile, sidebar on desktop */}
         {showQueue && (
-          <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col">
+          <>
+            {/* Mobile overlay background */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+              onClick={() => setShowQueue(false)}
+            />
+            <div className="fixed inset-x-0 bottom-0 top-20 z-50 sm:relative sm:inset-auto sm:w-80 bg-gray-900 border-l border-gray-800 flex flex-col rounded-t-xl sm:rounded-none">
             <div className="p-4 border-b border-gray-800">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-white">Queue</h3>
@@ -878,18 +935,88 @@ function JukeboxPage() {
                 {queue.length} track{queue.length !== 1 ? 's' : ''} in queue
               </div>
             )}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* Player Bar */}
-      <div className="bg-gray-900 border-t border-gray-800 px-4 py-3">
-        <div className="flex items-center gap-4">
+      <div className="bg-gray-900 border-t border-gray-800 px-2 sm:px-4 py-2 sm:py-3">
+        {/* Mobile layout */}
+        <div className="sm:hidden">
+          {/* Progress bar on top for mobile */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-gray-500 w-8 text-right">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="flex-1 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none
+                [&::-webkit-slider-thumb]:w-3
+                [&::-webkit-slider-thumb]:h-3
+                [&::-webkit-slider-thumb]:rounded-full
+                [&::-webkit-slider-thumb]:bg-white"
+            />
+            <span className="text-xs text-gray-500 w-8">{formatTime(duration)}</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Track Info */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {currentTrack ? (
+                <>
+                  <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {currentTrack.cover_art_path ? (
+                      <img src={libraryApi.getCoverUrl(currentTrack.id)} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Music className="w-5 h-5 text-gray-600" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-sm font-medium truncate">{currentTrack.title || currentTrack.filename}</p>
+                    <p className="text-gray-400 text-xs truncate">{currentTrack.artist || 'Unknown'}</p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-gray-500 text-sm">No track</p>
+              )}
+            </div>
+            
+            {/* Controls */}
+            <div className="flex items-center gap-1">
+              <button onClick={playPrevious} className="p-2 text-gray-400 hover:text-white">
+                <SkipBack className="w-5 h-5" />
+              </button>
+              <button
+                onClick={togglePlay}
+                disabled={!currentTrack}
+                className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center disabled:opacity-50"
+              >
+                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+              </button>
+              <button onClick={playNext} className="p-2 text-gray-400 hover:text-white">
+                <SkipForward className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowQueue(!showQueue)}
+                className={`p-2 ${showQueue ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Desktop layout */}
+        <div className="hidden sm:flex items-center gap-4">
           {/* Track Info */}
-          <div className="flex items-center gap-3 w-64">
+          <div className="flex items-center gap-3 w-48 md:w-64">
             {currentTrack ? (
               <>
-                <div className="w-14 h-14 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="w-12 md:w-14 h-12 md:h-14 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {currentTrack.cover_art_path ? (
                     <img 
                       src={libraryApi.getCoverUrl(currentTrack.id)} 
@@ -901,8 +1028,8 @@ function JukeboxPage() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-white font-medium truncate">{currentTrack.title || currentTrack.filename}</p>
-                  <p className="text-gray-400 text-sm truncate">{currentTrack.artist || 'Unknown'}</p>
+                  <p className="text-white font-medium truncate text-sm md:text-base">{currentTrack.title || currentTrack.filename}</p>
+                  <p className="text-gray-400 text-xs md:text-sm truncate">{currentTrack.artist || 'Unknown'}</p>
                 </div>
               </>
             ) : (
@@ -912,10 +1039,10 @@ function JukeboxPage() {
 
           {/* Center Controls */}
           <div className="flex-1 flex flex-col items-center gap-2">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
               <button
                 onClick={() => setShuffle(!shuffle)}
-                className={`transition-colors ${shuffle ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+                className={`hidden md:block transition-colors ${shuffle ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
               >
                 <Shuffle className="w-5 h-5" />
               </button>
@@ -940,7 +1067,7 @@ function JukeboxPage() {
               </button>
               <button
                 onClick={() => setRepeat(repeat === 'none' ? 'all' : repeat === 'all' ? 'one' : 'none')}
-                className={`transition-colors ${repeat !== 'none' ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+                className={`hidden md:block transition-colors ${repeat !== 'none' ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
               >
                 <Repeat className="w-5 h-5" />
                 {repeat === 'one' && <span className="text-xs">1</span>}

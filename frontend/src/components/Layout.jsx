@@ -38,13 +38,13 @@ function Layout() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="ArchiveXM" className="w-10 h-10 rounded-lg" />
-              <span className="text-xl font-bold text-white">ArchiveXM</span>
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity">
+              <img src="/logo.png" alt="ArchiveXM" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg" />
+              <span className="text-lg sm:text-xl font-bold text-white hidden xs:inline">ArchiveXM</span>
             </Link>
 
             {/* Navigation */}
-            <nav className="flex items-center gap-2">
+            <nav className="flex items-center gap-1 sm:gap-2">
               {/* Recording Indicator with Current Track */}
               {isRecording && (
                 <div className="relative flex items-center gap-3">
@@ -69,17 +69,17 @@ function Layout() {
                   
                   <button
                     onClick={() => setShowStopMenu(!showStopMenu)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors ${
                       recordingData?.stopping 
                         ? 'bg-yellow-600/20 border border-yellow-500/50' 
                         : 'bg-red-600/20 border border-red-500/50 hover:bg-red-600/30'
                     }`}
                   >
-                    <Circle className={`w-3 h-3 ${recordingData?.stopping ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500 animate-pulse'}`} />
-                    <span className={`text-sm font-medium ${recordingData?.stopping ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {recordingData?.stopping ? 'STOPPING' : 'REC'}
+                    <Circle className={`w-2.5 sm:w-3 h-2.5 sm:h-3 ${recordingData?.stopping ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500 animate-pulse'}`} />
+                    <span className={`text-xs sm:text-sm font-medium ${recordingData?.stopping ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recordingData?.stopping ? 'STOP' : 'REC'}
                     </span>
-                    <span className={`text-sm ${recordingData?.stopping ? 'text-yellow-300' : 'text-red-300'}`}>{formatElapsed(recordingData?.elapsedSeconds)}</span>
+                    <span className={`text-xs sm:text-sm hidden xs:inline ${recordingData?.stopping ? 'text-yellow-300' : 'text-red-300'}`}>{formatElapsed(recordingData?.elapsedSeconds)}</span>
                   </button>
                   
                   {/* Stop Menu Dropdown */}
@@ -114,25 +114,25 @@ function Layout() {
               
               <Link
                 to="/"
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
                   location.pathname === '/' 
                     ? 'bg-sxm-accent text-white' 
                     : 'text-gray-400 hover:text-white hover:bg-sxm-card'
                 }`}
               >
                 <Radio size={18} />
-                <span>Channels</span>
+                <span className="hidden sm:inline">Channels</span>
               </Link>
               <Link
                 to="/jukebox"
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
                   location.pathname === '/jukebox' 
                     ? 'bg-sxm-accent text-white' 
                     : 'text-gray-400 hover:text-white hover:bg-sxm-card'
                 }`}
               >
                 <Disc3 size={18} />
-                <span>Jukebox</span>
+                <span className="hidden sm:inline">Jukebox</span>
               </Link>
             </nav>
           </div>
@@ -140,7 +140,7 @@ function Layout() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <Outlet />
       </main>
     </div>
