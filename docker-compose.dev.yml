@@ -1,0 +1,45 @@
+version: '3.8'
+
+# Development compose file - mounts source code for hot reloading
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: archivexm-backend-dev
+    ports:
+      - "${BACKEND_PORT:-8742}:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+      - ./downloads:/downloads
+    environment:
+      - DATABASE_URL=sqlite:///./data/archivexm.db
+      - DOWNLOAD_PATH=/downloads
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    networks:
+      - archivexm-network
+
+  frontend:
+    image: node:20-alpine
+    container_name: archivexm-frontend-dev
+    working_dir: /app
+    ports:
+      - "${FRONTEND_PORT:-8743}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8742}
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - archivexm-network
+
+networks:
+  archivexm-network:
+    driver: bridge

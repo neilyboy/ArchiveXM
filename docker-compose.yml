@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: archivexm-backend
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${BACKEND_PORT:-8742}:8000"
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+      - ${DOWNLOAD_PATH:-./downloads}:/downloads
+    environment:
+      - DATABASE_URL=sqlite:///./data/archivexm.db
+      - DOWNLOAD_PATH=/downloads
+    restart: unless-stopped
+    networks:
+      - archivexm-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: archivexm-frontend
+    ports:
+      - "${FRONTEND_PORT:-8743}:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8742}
+    restart: unless-stopped
+    networks:
+      - archivexm-network
+
+networks:
+  archivexm-network:
+    driver: bridge
+
+volumes:
+  data:
+  downloads:

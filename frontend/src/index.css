@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background-color: #0a0a0f;
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-sxm-accent hover:bg-sxm-accent-hover text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-sxm-card hover:bg-sxm-border text-white font-medium py-2 px-4 rounded-lg border border-sxm-border transition-colors duration-200;
+  }
+  
+  .card {
+    @apply bg-sxm-card border border-sxm-border rounded-xl p-4;
+  }
+  
+  .input {
+    @apply w-full bg-sxm-darker border border-sxm-border rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-sxm-accent transition-colors;
+  }
+}
