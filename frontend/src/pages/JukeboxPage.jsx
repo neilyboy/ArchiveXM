@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { 
   Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Shuffle, Repeat, List, Plus, Search, RefreshCw, Disc3,
   MoreVertical, Trash2, ListPlus, X, ChevronLeft, ChevronRight,
-  Clock, Library, User, Album, Loader2
+  Clock, Library, User, Album, Loader2, Radio, Home
 } from 'lucide-react'
 import { libraryApi } from '../services/api'
 
@@ -37,6 +38,9 @@ function JukeboxPage() {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [trackToAdd, setTrackToAdd] = useState(null)
+  
+  // Context menu for track actions
+  const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, track: null, index: -1 })
 
   const currentTrack = queue[currentIndex] || null
 
@@ -341,6 +345,50 @@ function JukeboxPage() {
 
   const filteredTracks = getFilteredTracks()
 
+  // Handle track click - show context menu
+  const handleTrackClick = (e, track, index) => {
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    setContextMenu({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      track,
+      index
+    })
+  }
+
+  // Close context menu when clicking elsewhere
+  const closeContextMenu = () => {
+    setContextMenu({ show: false, x: 0, y: 0, track: null, index: -1 })
+  }
+
+  // Play now from context menu
+  const handlePlayNow = () => {
+    if (contextMenu.track) {
+      playTrack(contextMenu.track, contextMenu.index, filteredTracks)
+    }
+    closeContextMenu()
+  }
+
+  // Add to queue from context menu
+  const handleAddToQueue = () => {
+    if (contextMenu.track) {
+      addToQueue(contextMenu.track)
+    }
+    closeContextMenu()
+  }
+
+  // Play next from context menu
+  const handlePlayNext = () => {
+    if (contextMenu.track) {
+      const newQueue = [...queue]
+      newQueue.splice(currentIndex + 1, 0, contextMenu.track)
+      setQueue(newQueue)
+    }
+    closeContextMenu()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -350,7 +398,7 @@ function JukeboxPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950">
+    <div className="flex flex-col h-screen bg-gray-950" onClick={closeContextMenu}>
       {/* Hidden audio element */}
       <audio
         ref={audioRef}
@@ -363,12 +411,23 @@ function JukeboxPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
-          {/* Logo/Title */}
+          {/* Logo/Title with back link */}
           <div className="p-4 border-b border-gray-800">
-            <div className="flex items-center gap-2">
-              <Disc3 className="w-8 h-8 text-primary" />
-              <span className="text-xl font-bold text-white">Jukebox</span>
-            </div>
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <img src="/logo.png" alt="ArchiveXM" className="w-8 h-8 rounded" />
+              <span className="text-lg font-bold text-white">ArchiveXM</span>
+            </Link>
+          </div>
+          
+          {/* Back to Channels link */}
+          <div className="p-2 border-b border-gray-800">
+            <Link
+              to="/"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            >
+              <Radio className="w-5 h-5" />
+              <span>Back to Channels</span>
+            </Link>
           </div>
 
           {/* Navigation */}
@@ -500,6 +559,7 @@ function JukeboxPage() {
                       className={`hover:bg-gray-800/50 transition-colors cursor-pointer ${
                         currentTrack?.id === track.id ? 'bg-primary/20' : ''
                       }`}
+                      onClick={(e) => handleTrackClick(e, track, index)}
                       onDoubleClick={() => playTrack(track, index, filteredTracks)}
                     >
                       <td className="px-4 py-3 text-gray-500">
@@ -510,13 +570,26 @@ function JukeboxPage() {
                             <span className="w-1 h-2 bg-primary rounded-full animate-pulse delay-150"></span>
                           </div>
                         ) : (
-                          index + 1
+                          <button
+                            onClick={(e) => { e.stopPropagation(); playTrack(track, index, filteredTracks) }}
+                            className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                          >
+                            <Play className="w-3 h-3" />
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0">
-                            <Music className="w-5 h-5 text-gray-600" />
+                          <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {track.cover_art_path ? (
+                              <img 
+                                src={libraryApi.getCoverUrl(track.id)} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                              />
+                            ) : null}
+                            <Music className={`w-5 h-5 text-gray-600 ${track.cover_art_path ? 'hidden' : ''}`} />
                           </div>
                           <span className="text-white font-medium truncate">
                             {track.title || track.filename}
@@ -853,6 +926,45 @@ function JukeboxPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu.show && (
+        <div 
+          className="fixed bg-gray-800 rounded-lg shadow-xl border border-gray-700 py-2 z-50 min-w-48"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handlePlayNow}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            <span>Play Now</span>
+          </button>
+          <button
+            onClick={handlePlayNext}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors"
+          >
+            <SkipForward className="w-4 h-4" />
+            <span>Play Next</span>
+          </button>
+          <button
+            onClick={handleAddToQueue}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add to Queue</span>
+          </button>
+          <div className="border-t border-gray-700 my-1"></div>
+          <button
+            onClick={() => { setTrackToAdd(contextMenu.track); closeContextMenu() }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left text-white hover:bg-gray-700 transition-colors"
+          >
+            <ListPlus className="w-4 h-4" />
+            <span>Add to Playlist</span>
+          </button>
         </div>
       )}
     </div>

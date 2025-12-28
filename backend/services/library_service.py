@@ -2,6 +2,7 @@
 Library Service - Scan and manage local audio files
 """
 import os
+import hashlib
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -18,10 +19,13 @@ class LibraryService:
     """Service for managing local audio library"""
     
     SUPPORTED_FORMATS = {'.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.wma'}
+    COVER_ART_DIR = "/app/data/cover_art"
     
     def __init__(self, db):
         self.db = db
         self.download_path = os.getenv("DOWNLOAD_PATH", "/downloads")
+        # Ensure cover art directory exists
+        os.makedirs(self.COVER_ART_DIR, exist_ok=True)
     
     async def scan_library(self) -> Dict:
         """
@@ -146,10 +150,13 @@ class LibraryService:
             # Extract tags based on format
             if isinstance(audio, MP4):
                 data = self._extract_mp4_tags(audio, data)
+                data = self._extract_mp4_cover(audio, file_path, data)
             elif file_path.suffix.lower() == '.mp3':
                 data = self._extract_mp3_tags(file_path, data)
+                data = self._extract_mp3_cover(file_path, data)
             elif isinstance(audio, FLAC):
                 data = self._extract_flac_tags(audio, data)
+                data = self._extract_flac_cover(audio, file_path, data)
             else:
                 # Generic extraction
                 data = self._extract_generic_tags(audio, data)
@@ -282,4 +289,53 @@ class LibraryService:
             if not data['title']:
                 data['title'] = stem
         
+        return data
+    
+    def _get_cover_path(self, file_path: Path) -> str:
+        """Generate a unique cover art path based on file hash"""
+        file_hash = hashlib.md5(str(file_path).encode()).hexdigest()[:16]
+        return os.path.join(self.COVER_ART_DIR, f"{file_hash}.jpg")
+    
+    def _extract_mp4_cover(self, audio: MP4, file_path: Path, data: Dict) -> Dict:
+        """Extract cover art from M4A/MP4 files"""
+        try:
+            if 'covr' in audio.tags:
+                covers = audio.tags['covr']
+                if covers and len(covers) > 0:
+                    cover_data = bytes(covers[0])
+                    cover_path = self._get_cover_path(file_path)
+                    with open(cover_path, 'wb') as f:
+                        f.write(cover_data)
+                    data['cover_art_path'] = cover_path
+        except Exception as e:
+            print(f"Error extracting MP4 cover: {e}")
+        return data
+    
+    def _extract_mp3_cover(self, file_path: Path, data: Dict) -> Dict:
+        """Extract cover art from MP3 files"""
+        try:
+            audio = ID3(str(file_path))
+            for key in audio.keys():
+                if key.startswith('APIC'):
+                    cover_data = audio[key].data
+                    cover_path = self._get_cover_path(file_path)
+                    with open(cover_path, 'wb') as f:
+                        f.write(cover_data)
+                    data['cover_art_path'] = cover_path
+                    break
+        except Exception as e:
+            print(f"Error extracting MP3 cover: {e}")
+        return data
+    
+    def _extract_flac_cover(self, audio: FLAC, file_path: Path, data: Dict) -> Dict:
+        """Extract cover art from FLAC files"""
+        try:
+            if audio.pictures:
+                cover_data = audio.pictures[0].data
+                cover_path = self._get_cover_path(file_path)
+                with open(cover_path, 'wb') as f:
+                    f.write(cover_data)
+                data['cover_art_path'] = cover_path
+        except Exception as e:
+            print(f"Error extracting FLAC cover: {e}")
         return data
