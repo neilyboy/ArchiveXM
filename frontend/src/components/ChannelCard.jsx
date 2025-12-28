@@ -1,14 +1,25 @@
 import { Link } from 'react-router-dom'
-import { Radio } from 'lucide-react'
+import { Radio, Circle } from 'lucide-react'
+import { useRecording } from '../context/RecordingContext'
 
 function ChannelCard({ channel }) {
+  const { isRecording, recordingData } = useRecording()
+  const isThisChannelRecording = isRecording && recordingData?.channelId === channel.channel_id
+  
   return (
     <Link
       to={`/channel/${channel.channel_id}`}
-      className="card hover:border-sxm-accent transition-colors group"
+      className={`card hover:border-sxm-accent transition-colors group ${isThisChannelRecording ? 'border-red-500/50 ring-1 ring-red-500/30' : ''}`}
     >
       {/* Channel Image */}
-      <div className="aspect-square mb-3 rounded-lg overflow-hidden bg-sxm-darker">
+      <div className="aspect-square mb-3 rounded-lg overflow-hidden bg-sxm-darker relative">
+        {/* Recording Indicator Badge */}
+        {isThisChannelRecording && (
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 bg-red-600/90 rounded-full">
+            <Circle className="w-2 h-2 text-white fill-white animate-pulse" />
+            <span className="text-xs text-white font-medium">REC</span>
+          </div>
+        )}
         {channel.image_url ? (
           <img
             src={channel.image_url}

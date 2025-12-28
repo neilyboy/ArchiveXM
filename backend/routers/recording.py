@@ -21,12 +21,19 @@ class StartRecordingRequest(BaseModel):
     channel_id: str
 
 
+class CurrentTrackInfo(BaseModel):
+    artist: Optional[str] = None
+    title: Optional[str] = None
+    image_url: Optional[str] = None
+
+
 class RecordingStatusResponse(BaseModel):
     recording: bool
     channel_id: Optional[str] = None
     start_time: Optional[str] = None
     elapsed_seconds: Optional[float] = None
     tracks_recorded: Optional[int] = None
+    current_track: Optional[CurrentTrackInfo] = None
 
 
 @router.post("/start")
@@ -104,12 +111,23 @@ async def recording_status():
     
     status = active_recorder.get_status()
     
+    # Build current track info if available
+    current_track_info = None
+    if status.get("current_track"):
+        ct = status["current_track"]
+        current_track_info = CurrentTrackInfo(
+            artist=ct.get("artist"),
+            title=ct.get("title"),
+            image_url=ct.get("image_url")
+        )
+    
     return RecordingStatusResponse(
         recording=status.get("recording", False),
         channel_id=status.get("channel_id"),
         start_time=status.get("start_time"),
         elapsed_seconds=status.get("elapsed_seconds"),
-        tracks_recorded=status.get("tracks_recorded")
+        tracks_recorded=status.get("tracks_recorded"),
+        current_track=current_track_info
     )
 
 
