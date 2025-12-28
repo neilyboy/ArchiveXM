@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import SetupPage from './pages/SetupPage'
 import ChannelsPage from './pages/ChannelsPage'
@@ -7,7 +7,9 @@ import JukeboxPage from './pages/JukeboxPage'
 import Layout from './components/Layout'
 import DownloadStatus from './components/DownloadStatus'
 import PlayerBar from './components/PlayerBar'
+import JukeboxPlayerBar from './components/JukeboxPlayerBar'
 import { PlayerProvider } from './context/PlayerContext'
+import { JukeboxProvider } from './context/JukeboxContext'
 import { api } from './services/api'
 
 function App() {
@@ -42,35 +44,47 @@ function App() {
   }
 
   return (
-    <PlayerProvider>
-      <div className="pb-20"> {/* Padding for bottom player bar */}
-        <Routes>
-          <Route 
-            path="/setup" 
-            element={
-              isConfigured ? <Navigate to="/" replace /> : <SetupPage onComplete={() => setIsConfigured(true)} />
-            } 
-          />
-          <Route 
-            path="/" 
-            element={
-              isConfigured ? <Layout /> : <Navigate to="/setup" replace />
-            }
-          >
-            <Route index element={<ChannelsPage />} />
-            <Route path="channel/:channelId" element={<ChannelDetailPage />} />
-          </Route>
-          <Route 
-            path="/jukebox" 
-            element={
-              isConfigured ? <JukeboxPage /> : <Navigate to="/setup" replace />
-            } 
-          />
-        </Routes>
-        {isConfigured && <DownloadStatus />}
-        {isConfigured && <PlayerBar />}
-      </div>
-    </PlayerProvider>
+    <JukeboxProvider>
+      <PlayerProvider>
+        <AppContent isConfigured={isConfigured} setIsConfigured={setIsConfigured} />
+      </PlayerProvider>
+    </JukeboxProvider>
+  )
+}
+
+function AppContent({ isConfigured, setIsConfigured }) {
+  const location = useLocation()
+  const isJukeboxPage = location.pathname === '/jukebox'
+
+  return (
+    <div className="pb-20"> {/* Padding for bottom player bar */}
+      <Routes>
+        <Route 
+          path="/setup" 
+          element={
+            isConfigured ? <Navigate to="/" replace /> : <SetupPage onComplete={() => setIsConfigured(true)} />
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            isConfigured ? <Layout /> : <Navigate to="/setup" replace />
+          }
+        >
+          <Route index element={<ChannelsPage />} />
+          <Route path="channel/:channelId" element={<ChannelDetailPage />} />
+        </Route>
+        <Route 
+          path="/jukebox" 
+          element={
+            isConfigured ? <JukeboxPage /> : <Navigate to="/setup" replace />
+          } 
+        />
+      </Routes>
+      {isConfigured && <DownloadStatus />}
+      {isConfigured && !isJukeboxPage && <PlayerBar />}
+      {isConfigured && !isJukeboxPage && <JukeboxPlayerBar />}
+    </div>
   )
 }
 

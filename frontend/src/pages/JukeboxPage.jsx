@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
@@ -7,8 +7,39 @@ import {
   Clock, Library, User, Album, Loader2, Radio, Home
 } from 'lucide-react'
 import { libraryApi } from '../services/api'
+import { useJukebox } from '../context/JukeboxContext'
 
 function JukeboxPage() {
+  // Get global jukebox state
+  const {
+    queue,
+    currentIndex,
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    shuffle,
+    repeat,
+    playTrack,
+    togglePlay,
+    playNext,
+    playPrevious,
+    seek,
+    addToQueue,
+    removeFromQueue,
+    clearQueue,
+    playAll,
+    shuffleAll,
+    setVolume,
+    setIsMuted,
+    setShuffle,
+    setRepeat,
+    setQueue,
+    setCurrentIndex,
+  } = useJukebox()
+
   // Library state
   const [tracks, setTracks] = useState([])
   const [playlists, setPlaylists] = useState([])
@@ -18,18 +49,6 @@ function JukeboxPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeView, setActiveView] = useState('tracks') // tracks, playlist
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
-  
-  // Player state
-  const audioRef = useRef(null)
-  const [queue, setQueue] = useState([])
-  const [currentIndex, setCurrentIndex] = useState(-1)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(0.8)
-  const [isMuted, setIsMuted] = useState(false)
-  const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState('none') // none, all, one
   const [showQueue, setShowQueue] = useState(false)
   
   // Playlist modal
@@ -40,17 +59,9 @@ function JukeboxPage() {
   // Context menu for track actions
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, track: null, index: -1 })
 
-  const currentTrack = queue[currentIndex] || null
-
   useEffect(() => {
     loadLibrary()
   }, [])
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume
-    }
-  }, [volume, isMuted])
 
   const loadLibrary = async () => {
     setLoading(true)
@@ -90,114 +101,9 @@ function JukeboxPage() {
     }
   }
 
-  // Player controls
-  const playTrack = (track, index = -1, trackList = null) => {
-    if (trackList) {
-      setQueue(trackList)
-      setCurrentIndex(index >= 0 ? index : trackList.findIndex(t => t.id === track.id))
-    } else if (index < 0) {
-      // Add to queue and play
-      const newQueue = [...queue, track]
-      setQueue(newQueue)
-      setCurrentIndex(newQueue.length - 1)
-    }
-    
-    if (audioRef.current) {
-      audioRef.current.src = libraryApi.getStreamUrl(track.id)
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
-
-  const togglePlay = () => {
-    if (!audioRef.current || !currentTrack) return
-    
-    if (isPlaying) {
-      audioRef.current.pause()
-    } else {
-      audioRef.current.play()
-    }
-    setIsPlaying(!isPlaying)
-  }
-
-  const playNext = () => {
-    if (queue.length === 0) return
-    
-    let nextIndex
-    if (shuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length)
-    } else {
-      nextIndex = currentIndex + 1
-      if (nextIndex >= queue.length) {
-        if (repeat === 'all') {
-          nextIndex = 0
-        } else {
-          return
-        }
-      }
-    }
-    
-    setCurrentIndex(nextIndex)
-    if (audioRef.current) {
-      audioRef.current.src = libraryApi.getStreamUrl(queue[nextIndex].id)
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
-
-  const playPrevious = () => {
-    if (queue.length === 0) return
-    
-    // If more than 3 seconds into track, restart it
-    if (currentTime > 3) {
-      audioRef.current.currentTime = 0
-      return
-    }
-    
-    let prevIndex = currentIndex - 1
-    if (prevIndex < 0) {
-      if (repeat === 'all') {
-        prevIndex = queue.length - 1
-      } else {
-        prevIndex = 0
-      }
-    }
-    
-    setCurrentIndex(prevIndex)
-    if (audioRef.current) {
-      audioRef.current.src = libraryApi.getStreamUrl(queue[prevIndex].id)
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration)
-    }
-  }
-
-  const handleEnded = () => {
-    if (repeat === 'one') {
-      audioRef.current.currentTime = 0
-      audioRef.current.play()
-    } else {
-      playNext()
-    }
-  }
-
+  // Helper functions
   const handleSeek = (e) => {
-    const value = parseFloat(e.target.value)
-    if (audioRef.current) {
-      audioRef.current.currentTime = value
-      setCurrentTime(value)
-    }
+    seek(parseFloat(e.target.value))
   }
 
   const formatTime = (seconds) => {
@@ -207,65 +113,18 @@ function JukeboxPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Queue management
-  const addToQueue = (track) => {
-    setQueue([...queue, track])
-  }
-
-  const removeFromQueue = (index) => {
-    const newQueue = queue.filter((_, i) => i !== index)
-    setQueue(newQueue)
-    if (index < currentIndex) {
-      setCurrentIndex(currentIndex - 1)
-    } else if (index === currentIndex) {
-      // Current track removed, play next
-      if (newQueue.length > 0) {
-        const newIndex = Math.min(index, newQueue.length - 1)
-        setCurrentIndex(newIndex)
-        audioRef.current.src = libraryApi.getStreamUrl(newQueue[newIndex].id)
-        audioRef.current.play()
-      } else {
-        setCurrentIndex(-1)
-        setIsPlaying(false)
-      }
+  // Local playAll/shuffleAll that use filtered tracks
+  const handlePlayAll = () => {
+    const filtered = getFilteredTracks()
+    if (filtered.length > 0) {
+      playAll(filtered)
     }
   }
 
-  const clearQueue = () => {
-    setQueue([])
-    setCurrentIndex(-1)
-    setIsPlaying(false)
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ''
-    }
-  }
-
-  const playAll = () => {
-    const filteredTracks = getFilteredTracks()
-    if (filteredTracks.length > 0) {
-      setQueue(filteredTracks)
-      setCurrentIndex(0)
-      if (audioRef.current) {
-        audioRef.current.src = libraryApi.getStreamUrl(filteredTracks[0].id)
-        audioRef.current.play()
-        setIsPlaying(true)
-      }
-    }
-  }
-
-  const shuffleAll = () => {
-    const filteredTracks = getFilteredTracks()
-    if (filteredTracks.length > 0) {
-      const shuffled = [...filteredTracks].sort(() => Math.random() - 0.5)
-      setQueue(shuffled)
-      setCurrentIndex(0)
-      setShuffle(true)
-      if (audioRef.current) {
-        audioRef.current.src = libraryApi.getStreamUrl(shuffled[0].id)
-        audioRef.current.play()
-        setIsPlaying(true)
-      }
+  const handleShuffleAll = () => {
+    const filtered = getFilteredTracks()
+    if (filtered.length > 0) {
+      shuffleAll(filtered)
     }
   }
 
@@ -387,14 +246,6 @@ function JukeboxPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-950" onClick={closeContextMenu}>
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-      />
-
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
@@ -520,14 +371,14 @@ function JukeboxPage() {
               <span>{scanning ? 'Scanning...' : 'Scan Library'}</span>
             </button>
             <button
-              onClick={playAll}
+              onClick={handlePlayAll}
               className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg transition-colors"
             >
               <Play className="w-4 h-4" />
               <span>Play All</span>
             </button>
             <button
-              onClick={shuffleAll}
+              onClick={handleShuffleAll}
               className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
             >
               <Shuffle className="w-4 h-4" />
@@ -727,8 +578,16 @@ function JukeboxPage() {
           <div className="flex items-center gap-3 w-64">
             {currentTrack ? (
               <>
-                <div className="w-14 h-14 bg-gray-800 rounded flex items-center justify-center flex-shrink-0">
-                  <Music className="w-6 h-6 text-gray-600" />
+                <div className="w-14 h-14 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {currentTrack.cover_art_path ? (
+                    <img 
+                      src={libraryApi.getCoverUrl(currentTrack.id)} 
+                      alt="" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Music className="w-6 h-6 text-gray-600" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-white font-medium truncate">{currentTrack.title || currentTrack.filename}</p>

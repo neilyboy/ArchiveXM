@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react'
 import Hls from 'hls.js'
 import { streamsApi } from '../services/api'
+import { useJukebox } from './JukeboxContext'
 
 const PlayerContext = createContext(null)
 
@@ -8,6 +9,9 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(null)
   const hlsRef = useRef(null)
   const isChangingChannel = useRef(false)  // Prevent race conditions
+  
+  // Get Jukebox context to pause it when starting live stream
+  const jukebox = useJukebox()
   
   const [currentChannel, setCurrentChannel] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
@@ -65,6 +69,12 @@ export function PlayerProvider({ children }) {
     
     console.log('[Player] Starting playback for:', channel.name)
     isChangingChannel.current = true
+    
+    // Pause Jukebox when starting live stream
+    if (jukebox?.isPlaying) {
+      console.log('[Player] Pausing Jukebox for live stream')
+      jukebox.pause()
+    }
     
     try {
       // First, fully stop any existing playback
@@ -190,7 +200,7 @@ export function PlayerProvider({ children }) {
       setIsLoading(false)
       isChangingChannel.current = false
     }
-  }, [])
+  }, [jukebox])
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return
