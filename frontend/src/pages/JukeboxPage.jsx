@@ -12,13 +12,11 @@ function JukeboxPage() {
   // Library state
   const [tracks, setTracks] = useState([])
   const [playlists, setPlaylists] = useState([])
-  const [artists, setArtists] = useState([])
-  const [albums, setAlbums] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeView, setActiveView] = useState('tracks') // tracks, artists, albums, playlists
+  const [activeView, setActiveView] = useState('tracks') // tracks, playlist
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
   
   // Player state
@@ -72,29 +70,19 @@ function JukeboxPage() {
     }
   }
 
-  const loadArtists = async () => {
-    try {
-      const res = await libraryApi.getArtists()
-      setArtists(res.data || [])
-    } catch (error) {
-      console.error('Error loading artists:', error)
-    }
-  }
-
-  const loadAlbums = async () => {
-    try {
-      const res = await libraryApi.getAlbums()
-      setAlbums(res.data || [])
-    } catch (error) {
-      console.error('Error loading albums:', error)
-    }
-  }
-
   const scanLibrary = async () => {
     setScanning(true)
     try {
       await libraryApi.scan()
-      await loadLibrary()
+      // Reload tracks without affecting playback (don't set loading)
+      const [tracksRes, playlistsRes, statsRes] = await Promise.all([
+        libraryApi.getTracks({ limit: 500 }),
+        libraryApi.getPlaylists(),
+        libraryApi.getStats()
+      ])
+      setTracks(tracksRes.data || [])
+      setPlaylists(playlistsRes.data || [])
+      setStats(statsRes.data)
     } catch (error) {
       console.error('Error scanning library:', error)
     } finally {
@@ -433,7 +421,7 @@ function JukeboxPage() {
           {/* Navigation */}
           <nav className="p-2 space-y-1">
             <button
-              onClick={() => setActiveView('tracks')}
+              onClick={() => { setActiveView('tracks'); setSearchQuery('') }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                 activeView === 'tracks' ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               }`}
@@ -441,25 +429,36 @@ function JukeboxPage() {
               <Music className="w-5 h-5" />
               <span>All Tracks</span>
             </button>
-            <button
-              onClick={() => { setActiveView('artists'); loadArtists() }}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                activeView === 'artists' ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <User className="w-5 h-5" />
-              <span>Artists</span>
-            </button>
-            <button
-              onClick={() => { setActiveView('albums'); loadAlbums() }}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                activeView === 'albums' ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <Album className="w-5 h-5" />
-              <span>Albums</span>
-            </button>
           </nav>
+          
+          {/* Now Playing Mini */}
+          {currentTrack && (
+            <div className="p-3 border-t border-gray-800">
+              <div className="text-xs text-gray-500 mb-2">NOW PLAYING</div>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {currentTrack.cover_art_path ? (
+                    <img 
+                      src={libraryApi.getCoverUrl(currentTrack.id)} 
+                      alt="" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Music className="w-6 h-6 text-gray-600" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white text-sm font-medium truncate">{currentTrack.title || currentTrack.filename}</div>
+                  <div className="text-gray-500 text-xs truncate">{currentTrack.artist || 'Unknown'}</div>
+                </div>
+              </div>
+              {queue.length > 1 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  {currentIndex + 1} of {queue.length} in queue
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Playlists */}
           <div className="flex-1 overflow-y-auto p-2">
@@ -621,43 +620,6 @@ function JukeboxPage() {
                   ))}
                 </tbody>
               </table>
-            )}
-
-            {activeView === 'artists' && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
-                {artists.map(artist => (
-                  <button
-                    key={artist.name}
-                    onClick={() => setSearchQuery(artist.name)}
-                    className="bg-gray-800/50 hover:bg-gray-800 rounded-lg p-4 text-left transition-colors"
-                  >
-                    <div className="w-full aspect-square bg-gray-700 rounded-full flex items-center justify-center mb-3">
-                      <User className="w-12 h-12 text-gray-500" />
-                    </div>
-                    <h3 className="text-white font-medium truncate">{artist.name}</h3>
-                    <p className="text-gray-500 text-sm">{artist.track_count} tracks</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {activeView === 'albums' && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
-                {albums.map(album => (
-                  <button
-                    key={`${album.name}-${album.artist}`}
-                    onClick={() => setSearchQuery(album.name)}
-                    className="bg-gray-800/50 hover:bg-gray-800 rounded-lg p-4 text-left transition-colors"
-                  >
-                    <div className="w-full aspect-square bg-gray-700 rounded flex items-center justify-center mb-3">
-                      <Album className="w-12 h-12 text-gray-500" />
-                    </div>
-                    <h3 className="text-white font-medium truncate">{album.name}</h3>
-                    <p className="text-gray-500 text-sm truncate">{album.artist}</p>
-                    <p className="text-gray-600 text-xs">{album.track_count} tracks</p>
-                  </button>
-                ))}
-              </div>
             )}
 
             {activeView === 'playlist' && selectedPlaylist && (

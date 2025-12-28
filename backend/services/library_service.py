@@ -64,8 +64,16 @@ class LibraryService:
                 
                 try:
                     if str(file_path) in existing_paths:
-                        # Track exists, check if needs update
-                        updated_tracks += 1
+                        # Track exists, check if cover art needs extraction
+                        existing_track = self.db.query(LocalTrack).filter(
+                            LocalTrack.file_path == str(file_path)
+                        ).first()
+                        if existing_track and not existing_track.cover_art_path:
+                            # Try to extract cover art for existing track
+                            track_data = self._extract_metadata(file_path)
+                            if track_data and track_data.get('cover_art_path'):
+                                existing_track.cover_art_path = track_data['cover_art_path']
+                                updated_tracks += 1
                     else:
                         # New track
                         track_data = self._extract_metadata(file_path)
