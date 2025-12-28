@@ -21,7 +21,8 @@ export function RecordingProvider({ children }) {
           channelId: data.channel_id,
           startTime: data.start_time,
           elapsedSeconds: data.elapsed_seconds,
-          tracksRecorded: data.tracks_recorded
+          tracksRecorded: data.tracks_recorded,
+          currentTrack: data.current_track || null
         })
       } else {
         setIsRecording(false)

@@ -43,6 +43,7 @@ class LiveRecorder:
         self.start_time = None
         self.stop_requested = False
         self.wait_for_track_on_stop = False
+        self.current_track = None  # Currently recording track info
     
     async def start_recording(
         self,
@@ -203,6 +204,7 @@ class LiveRecorder:
             if current_track:
                 last_track = current_track
                 last_track_id = current_track.get('timestamp_utc')
+                self.current_track = current_track  # Track for status reporting
                 print(f"🎵 Starting with: {current_track.get('artist')} - {current_track.get('title')}")
                 
                 # Include segments from current track's start time
@@ -262,6 +264,7 @@ class LiveRecorder:
                         
                         last_track = current_track
                         last_track_id = current_track_id
+                        self.current_track = current_track  # Update for status reporting
                         
                         if on_track_change:
                             try:
@@ -478,7 +481,7 @@ class LiveRecorder:
         return result[:100].strip()
     
     def get_status(self) -> Dict:
-        """Get current recording status"""
+        """Get current recording status including current track"""
         if not self.is_recording:
             return {
                 'recording': False
@@ -486,10 +489,20 @@ class LiveRecorder:
         
         elapsed = (datetime.now(timezone.utc) - self.start_time).total_seconds()
         
-        return {
+        result = {
             'recording': True,
             'channel_id': self.current_channel,
             'start_time': self.start_time.isoformat(),
             'elapsed_seconds': elapsed,
             'tracks_recorded': len(self.tracks_recorded)
         }
+        
+        # Include current track info if available
+        if self.current_track:
+            result['current_track'] = {
+                'artist': self.current_track.get('artist'),
+                'title': self.current_track.get('title'),
+                'image_url': self.current_track.get('image_url')
+            }
+        
+        return result
