@@ -224,11 +224,16 @@ export function PlayerProvider({ children }) {
       audioRef.current.pause()
       setIsPlaying(false)
     } else {
+      // Pause Jukebox when resuming live stream
+      if (jukebox?.isPlaying) {
+        console.log('[Player] Pausing Jukebox for live stream resume')
+        jukebox.pause()
+      }
       audioRef.current.play()
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [isPlaying])
+  }, [isPlaying, jukebox])
 
   const stop = useCallback(() => {
     if (hlsRef.current) {
