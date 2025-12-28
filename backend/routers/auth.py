@@ -43,23 +43,33 @@ async def login(request: LoginRequest, db: DBSession = Depends(get_db)):
         if not result["success"]:
             raise HTTPException(status_code=401, detail=result.get("error", "Authentication failed"))
         
-        # Store credentials (encrypted)
-        existing = db.query(Credentials).first()
+        # Store credentials (encrypted) - check if this username already exists
+        existing = db.query(Credentials).filter(Credentials.username == request.username).first()
         if existing:
-            existing.username = request.username
             existing.password_encrypted = auth_service.encrypt_password(request.password)
             existing.updated_at = datetime.utcnow()
+            credential_id = existing.id
         else:
+            # Count existing credentials to set name
+            cred_count = db.query(Credentials).count()
             creds = Credentials(
+                name=f"Account {cred_count + 1}" if cred_count > 0 else "Primary",
                 username=request.username,
-                password_encrypted=auth_service.encrypt_password(request.password)
+                password_encrypted=auth_service.encrypt_password(request.password),
+                is_active=True,
+                max_streams=3,
+                priority=cred_count
             )
             db.add(creds)
+            db.commit()
+            db.refresh(creds)
+            credential_id = creds.id
         
-        # Store session
-        db.query(AuthSession).update({"is_valid": False})
+        # Store session linked to credential
+        db.query(AuthSession).filter(AuthSession.credential_id == credential_id).update({"is_valid": False})
         
         session = AuthSession(
+            credential_id=credential_id,
             bearer_token=result["bearer_token"],
             cookies=json.dumps(result.get("cookies", {})),
             expires_at=result.get("expires_at"),

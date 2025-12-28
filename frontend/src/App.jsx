@@ -4,6 +4,7 @@ import SetupPage from './pages/SetupPage'
 import ChannelsPage from './pages/ChannelsPage'
 import ChannelDetailPage from './pages/ChannelDetailPage'
 import JukeboxPage from './pages/JukeboxPage'
+import SettingsPage from './pages/SettingsPage'
 import Layout from './components/Layout'
 import DownloadStatus from './components/DownloadStatus'
 import UnifiedPlayerBar from './components/UnifiedPlayerBar'
@@ -94,6 +95,14 @@ function AppContent({ isConfigured, setIsConfigured }) {
             isConfigured ? <JukeboxPage /> : <Navigate to="/setup" replace />
           } 
         />
+        <Route 
+          path="/settings" 
+          element={
+            isConfigured ? <Layout /> : <Navigate to="/setup" replace />
+          }
+        >
+          <Route index element={<SettingsPage />} />
+        </Route>
       </Routes>
       {isConfigured && <DownloadStatus />}
       {isConfigured && !isJukeboxPage && <UnifiedPlayerBar />}

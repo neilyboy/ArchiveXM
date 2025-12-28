@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Radio, Settings, Download, RefreshCw, Disc3, Circle, Square, Music } from 'lucide-react'
+import { Radio, Settings as SettingsIcon, Download, RefreshCw, Disc3, Circle, Square, Music } from 'lucide-react'
 import { useState } from 'react'
 import { useJukebox } from '../context/JukeboxContext'
 import { useRecording } from '../context/RecordingContext'
@@ -133,6 +133,17 @@ function Layout() {
               >
                 <Disc3 size={18} />
                 <span className="hidden sm:inline">Jukebox</span>
+              </Link>
+              <Link
+                to="/settings"
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
+                  location.pathname === '/settings' 
+                    ? 'bg-sxm-accent text-white' 
+                    : 'text-gray-400 hover:text-white hover:bg-sxm-card'
+                }`}
+              >
+                <SettingsIcon size={18} />
+                <span className="hidden sm:inline">Settings</span>
               </Link>
             </nav>
           </div>

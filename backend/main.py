@@ -9,7 +9,7 @@ import os
 import asyncio
 
 from database import create_tables
-from routers import auth, channels, streams, downloads, config, recording, library
+from routers import auth, channels, streams, downloads, config, recording, library, settings
 
 # Background task reference
 _background_refresh_task = None
@@ -73,6 +73,7 @@ app.include_router(downloads.router, prefix="/api/downloads", tags=["Downloads"]
 app.include_router(config.router, prefix="/api/config", tags=["Configuration"])
 app.include_router(recording.router, prefix="/api/recording", tags=["Recording"])
 app.include_router(library.router, prefix="/api/library", tags=["Library"])
+app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 
 
 @app.get("/api/health")

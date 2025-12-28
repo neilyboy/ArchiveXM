@@ -37,8 +37,12 @@ class Credentials(Base):
     __tablename__ = "credentials"
     
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100))  # Friendly name like "Primary", "Wife's Account"
     username = Column(String(255))
     password_encrypted = Column(Text)
+    is_active = Column(Boolean, default=True)  # Whether this credential is enabled
+    max_streams = Column(Integer, default=3)  # Max concurrent streams for this credential
+    priority = Column(Integer, default=0)  # Lower = higher priority for selection
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -48,11 +52,24 @@ class Session(Base):
     __tablename__ = "sessions"
     
     id = Column(Integer, primary_key=True, index=True)
+    credential_id = Column(Integer, index=True)  # Link to credential used
     bearer_token = Column(Text)
     cookies = Column(Text)  # JSON encoded
     expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_valid = Column(Boolean, default=True)
+
+
+class ActiveStream(Base):
+    """Track active streams per credential for load balancing"""
+    __tablename__ = "active_streams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    credential_id = Column(Integer, index=True)
+    stream_type = Column(String(50))  # 'live', 'recording', 'download'
+    channel_id = Column(String(100))
+    started_at = Column(DateTime, default=datetime.utcnow)
+    last_heartbeat = Column(DateTime, default=datetime.utcnow)  # For cleanup of stale entries
 
 
 class Channel(Base):
