@@ -85,4 +85,62 @@ export const downloadsApi = {
     api.get(`/api/downloads/${downloadId}/status`)
 }
 
+// Library API (Jukebox)
+export const libraryApi = {
+  // Scanning
+  scan: () => 
+    api.post('/api/library/scan'),
+  
+  getStats: () => 
+    api.get('/api/library/stats'),
+  
+  // Tracks
+  getTracks: (params = {}) => 
+    api.get('/api/library/tracks', { params }),
+  
+  getTrack: (trackId) => 
+    api.get(`/api/library/tracks/${trackId}`),
+  
+  getStreamUrl: (trackId) => 
+    `${API_URL}/api/library/tracks/${trackId}/stream`,
+  
+  getCoverUrl: (trackId) => 
+    `${API_URL}/api/library/tracks/${trackId}/cover`,
+  
+  deleteTrack: (trackId, deleteFile = false) => 
+    api.delete(`/api/library/tracks/${trackId}`, { params: { delete_file: deleteFile } }),
+  
+  // Artists & Albums
+  getArtists: () => 
+    api.get('/api/library/artists'),
+  
+  getAlbums: () => 
+    api.get('/api/library/albums'),
+  
+  // Playlists
+  getPlaylists: () => 
+    api.get('/api/library/playlists'),
+  
+  getPlaylist: (playlistId) => 
+    api.get(`/api/library/playlists/${playlistId}`),
+  
+  createPlaylist: (name, description = '') => 
+    api.post('/api/library/playlists', { name, description }),
+  
+  updatePlaylist: (playlistId, name, description = '') => 
+    api.put(`/api/library/playlists/${playlistId}`, { name, description }),
+  
+  deletePlaylist: (playlistId) => 
+    api.delete(`/api/library/playlists/${playlistId}`),
+  
+  addToPlaylist: (playlistId, trackIds) => 
+    api.post(`/api/library/playlists/${playlistId}/tracks`, { track_ids: trackIds }),
+  
+  removeFromPlaylist: (playlistId, trackId) => 
+    api.delete(`/api/library/playlists/${playlistId}/tracks/${trackId}`),
+  
+  reorderPlaylist: (playlistId, trackIds) => 
+    api.put(`/api/library/playlists/${playlistId}/reorder`, trackIds)
+}
+
 export default api

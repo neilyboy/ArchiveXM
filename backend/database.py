@@ -89,6 +89,52 @@ class Download(Base):
     status = Column(String(50), default="completed")
 
 
+class LocalTrack(Base):
+    """Local audio file in library"""
+    __tablename__ = "local_tracks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    file_path = Column(Text, unique=True, index=True)
+    filename = Column(String(500))
+    artist = Column(String(255), index=True)
+    title = Column(String(255), index=True)
+    album = Column(String(255), index=True)
+    genre = Column(String(100))
+    duration_seconds = Column(Float)
+    file_size = Column(Integer)
+    bitrate = Column(Integer)
+    sample_rate = Column(Integer)
+    format = Column(String(20))  # m4a, mp3, flac, etc.
+    cover_art_path = Column(Text)  # Extracted cover art path
+    added_at = Column(DateTime, default=datetime.utcnow)
+    last_played = Column(DateTime)
+    play_count = Column(Integer, default=0)
+
+
+class Playlist(Base):
+    """User-created playlist"""
+    __tablename__ = "playlists"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), index=True)
+    description = Column(Text)
+    cover_image = Column(Text)  # Optional custom cover
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    track_count = Column(Integer, default=0)
+
+
+class PlaylistTrack(Base):
+    """Track in a playlist (junction table)"""
+    __tablename__ = "playlist_tracks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    playlist_id = Column(Integer, index=True)
+    track_id = Column(Integer, index=True)
+    position = Column(Integer)  # Order in playlist
+    added_at = Column(DateTime, default=datetime.utcnow)
+
+
 def create_tables():
     """Create all database tables"""
     Base.metadata.create_all(bind=engine)

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import SetupPage from './pages/SetupPage'
 import ChannelsPage from './pages/ChannelsPage'
 import ChannelDetailPage from './pages/ChannelDetailPage'
+import JukeboxPage from './pages/JukeboxPage'
 import Layout from './components/Layout'
 import DownloadStatus from './components/DownloadStatus'
 import PlayerBar from './components/PlayerBar'
@@ -59,6 +60,12 @@ function App() {
             <Route index element={<ChannelsPage />} />
             <Route path="channel/:channelId" element={<ChannelDetailPage />} />
           </Route>
+          <Route 
+            path="/jukebox" 
+            element={
+              isConfigured ? <JukeboxPage /> : <Navigate to="/setup" replace />
+            } 
+          />
         </Routes>
         {isConfigured && <DownloadStatus />}
         {isConfigured && <PlayerBar />}

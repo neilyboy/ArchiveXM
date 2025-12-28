@@ -4,11 +4,11 @@
   <img src="logo.png" alt="ArchiveXM Logo" width="200"/>
 </p>
 
-**ArchiveXM** is a modern web-based SiriusXM streaming and archival application. Browse 700+ channels, listen live, explore the 5-hour DVR buffer, and download tracks with full metadata and cover art.
+**ArchiveXM** is a modern web-based SiriusXM streaming and archival application. Browse 700+ channels, listen live, explore the 5-hour DVR buffer, download tracks with full metadata, and enjoy your collection with the built-in Jukebox player.
 
 ## Features
 
-- 🔐 **Secure Authentication** - Store SiriusXM credentials securely
+- 🔐 **Secure Authentication** - Store SiriusXM credentials securely with auto-refresh
 - 📻 **700+ Channels** - Browse all channels with artwork and descriptions
 - 🎧 **Listen Live** - Stream any channel in real-time
 - 📼 **DVR Buffer** - Access 5 hours of past content per channel
@@ -16,6 +16,7 @@
 - 🎨 **Cover Art** - Automatic cover art embedding
 - 🏷️ **Metadata Tagging** - Full ID3 tags (artist, title, album, etc.)
 - 🎬 **Live Recording** - Record live streams with auto-track splitting
+- 🎵 **Jukebox Player** - Full-featured local music player with playlists and queue management
 
 ## Quick Start
 
@@ -80,16 +81,29 @@ ArchiveXM/
 - Python 3.11+
 - FastAPI
 - SQLAlchemy
-- Playwright (for authentication)
+- httpx (async HTTP client)
+- Mutagen (audio metadata)
 - FFmpeg (audio processing)
-- N_m3u8DL-RE (HLS downloading)
 
 **Frontend:**
 - React 18
 - Vite
 - TailwindCSS
+- HLS.js (live streaming)
 - Lucide Icons
 - React Router
+
+## Jukebox Player
+
+The built-in Jukebox lets you enjoy your downloaded music collection:
+
+- 🎵 **Library Browser** - View all tracks, artists, and albums
+- 🔀 **Queue Management** - Build and manage playback queue
+- 📋 **Playlists** - Create and manage custom playlists
+- 🔁 **Playback Controls** - Shuffle, repeat, seek, volume
+- 🔍 **Search** - Quick search across your library
+
+Access the Jukebox from the navigation bar after downloading some tracks.
 
 ## License
 
@@ -97,5 +111,4 @@ MIT License - See LICENSE file for details.
 
 ## Acknowledgments
 
-- [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) - HLS downloader
 - SiriusXM for providing the streaming service

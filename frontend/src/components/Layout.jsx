@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Radio, Settings, Download, RefreshCw } from 'lucide-react'
+import { Radio, Settings, Download, RefreshCw, Disc3 } from 'lucide-react'
 import { useState } from 'react'
 
 function Layout() {
@@ -30,6 +30,17 @@ function Layout() {
               >
                 <Radio size={18} />
                 <span>Channels</span>
+              </Link>
+              <Link
+                to="/jukebox"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  location.pathname === '/jukebox' 
+                    ? 'bg-sxm-accent text-white' 
+                    : 'text-gray-400 hover:text-white hover:bg-sxm-card'
+                }`}
+              >
+                <Disc3 size={18} />
+                <span>Jukebox</span>
               </Link>
             </nav>
           </div>
