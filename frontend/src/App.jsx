@@ -9,6 +9,7 @@ import DownloadStatus from './components/DownloadStatus'
 import UnifiedPlayerBar from './components/UnifiedPlayerBar'
 import { PlayerProvider } from './context/PlayerContext'
 import { JukeboxProvider } from './context/JukeboxContext'
+import { RecordingProvider } from './context/RecordingContext'
 import { api } from './services/api'
 
 function App() {
@@ -45,7 +46,9 @@ function App() {
   return (
     <JukeboxProvider>
       <PlayerProvider>
-        <AppContent isConfigured={isConfigured} setIsConfigured={setIsConfigured} />
+        <RecordingProvider>
+          <AppContent isConfigured={isConfigured} setIsConfigured={setIsConfigured} />
+        </RecordingProvider>
       </PlayerProvider>
     </JukeboxProvider>
   )

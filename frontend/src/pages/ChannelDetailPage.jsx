@@ -285,7 +285,7 @@ function ChannelDetailPage() {
 
       {/* Recording Panel */}
       <div className="card mb-6">
-        <RecordingPanel channelId={channelId} channelName={channel.name} />
+        <RecordingPanel channelId={channelId} channelName={channel.name} channel={channel} />
       </div>
 
       {/* DVR Buffer / Track History */}

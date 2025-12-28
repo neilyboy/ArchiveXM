@@ -184,10 +184,15 @@ class LiveRecorder:
         on_track_change: Optional[Callable],
         on_progress: Optional[Callable]
     ):
-        """Main recording loop"""
-        last_track_id = None  # Track by timestamp, not full dict
+        """Main recording loop - records from LIVE EDGE only"""
+        last_track_id = None
         last_track = None
         segment_buffer = []
+        seen_segment_urls = set()  # Track which segments we've already seen
+        
+        # CRITICAL: Only record segments from NOW onwards (live edge)
+        recording_start = datetime.now(timezone.utc)
+        print(f"🎬 Recording started at {recording_start.isoformat()}")
         
         try:
             # Get initial playlist
@@ -202,9 +207,15 @@ class LiveRecorder:
             if key_url:
                 key_bytes = await self.hls_service.get_decryption_key(key_url)
             
+            # Mark all existing segments as "seen" so we don't record old content
+            if 'segments' in playlist_data:
+                for seg in playlist_data['segments']:
+                    seen_segment_urls.add(seg.get('url'))
+                print(f"📝 Marked {len(seen_segment_urls)} existing segments as seen (won't record)")
+            
             while self.is_recording:
                 try:
-                    # Get current track
+                    # Get current track from API
                     tracks = await self.api.get_schedule(channel_id, hours_back=1)
                     current_track = tracks[-1] if tracks else None
                     
@@ -213,7 +224,7 @@ class LiveRecorder:
                     
                     if current_track and current_track_id != last_track_id:
                         # Track changed
-                        print(f"🎵 Track change detected: {current_track.get('artist')} - {current_track.get('title')}")
+                        print(f"🎵 Track change: {current_track.get('artist')} - {current_track.get('title')}")
                         
                         if last_track and segment_buffer:
                             # Save previous track
@@ -233,16 +244,21 @@ class LiveRecorder:
                             except Exception as e:
                                 print(f"Track change callback error: {e}")
                     
-                    # Refresh playlist and get new segments
+                    # Refresh playlist and get NEW segments only
                     playlist_data = await self.hls_service.get_variant_playlist(channel_id)
                     
                     if 'segments' in playlist_data:
-                        # Get latest segments (last 10 to catch up)
-                        new_segments = playlist_data['segments'][-10:]
-                        
-                        for seg in new_segments:
-                            if seg not in segment_buffer:
+                        new_count = 0
+                        for seg in playlist_data['segments']:
+                            seg_url = seg.get('url')
+                            if seg_url and seg_url not in seen_segment_urls:
+                                # This is a NEW segment we haven't seen before
+                                seen_segment_urls.add(seg_url)
                                 segment_buffer.append(seg)
+                                new_count += 1
+                        
+                        if new_count > 0:
+                            print(f"   📥 Added {new_count} new segments (buffer: {len(segment_buffer)})")
                     
                     if on_progress:
                         elapsed = (datetime.now(timezone.utc) - self.start_time).total_seconds()
@@ -253,7 +269,7 @@ class LiveRecorder:
                             'tracks_recorded': len(self.tracks_recorded)
                         })
                     
-                    # Wait before next check
+                    # Wait before next check (HLS segments are ~10s)
                     await asyncio.sleep(5)
                     
                 except asyncio.CancelledError:
