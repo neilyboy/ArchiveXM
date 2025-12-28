@@ -170,6 +170,25 @@ class CredentialManager:
                 session.expires_at is None or session.expires_at > datetime.utcnow()
             )
             
+            # Calculate session expiration info
+            session_expires_at = None
+            session_expires_in = None
+            if session and session.expires_at:
+                session_expires_at = session.expires_at.isoformat()
+                remaining = session.expires_at - datetime.utcnow()
+                if remaining.total_seconds() > 0:
+                    hours = int(remaining.total_seconds() // 3600)
+                    minutes = int((remaining.total_seconds() % 3600) // 60)
+                    if hours > 24:
+                        days = hours // 24
+                        session_expires_in = f"{days}d {hours % 24}h"
+                    elif hours > 0:
+                        session_expires_in = f"{hours}h {minutes}m"
+                    else:
+                        session_expires_in = f"{minutes}m"
+                else:
+                    session_expires_in = "Expired"
+            
             stats['credentials'].append({
                 'id': cred.id,
                 'name': cred.name,
@@ -178,6 +197,8 @@ class CredentialManager:
                 'max_streams': cred.max_streams,
                 'priority': cred.priority,
                 'has_valid_session': has_valid_session,
+                'session_expires_at': session_expires_at,
+                'session_expires_in': session_expires_in,
                 'available_capacity': cred.max_streams - active_count
             })
             

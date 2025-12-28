@@ -270,20 +270,38 @@ function SettingsPage() {
                         <div className="text-gray-500 text-xs">streams</div>
                       </div>
                       
-                      {/* Status */}
-                      <div className={`flex items-center gap-1 text-sm ${
+                      {/* Status & Expiration */}
+                      <div className="text-right hidden sm:block">
+                        <div className={`flex items-center gap-1 text-sm ${
+                          cred.has_valid_session ? 'text-sxm-success' : 'text-sxm-warning'
+                        }`}>
+                          {cred.has_valid_session ? (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Valid</span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-4 h-4" />
+                              <span>Needs auth</span>
+                            </>
+                          )}
+                        </div>
+                        {cred.session_expires_in && cred.has_valid_session && (
+                          <div className="text-gray-500 text-xs">
+                            Expires in {cred.session_expires_in}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Mobile status icon only */}
+                      <div className={`sm:hidden ${
                         cred.has_valid_session ? 'text-sxm-success' : 'text-sxm-warning'
                       }`}>
                         {cred.has_valid_session ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="hidden sm:inline">Valid</span>
-                          </>
+                          <CheckCircle className="w-4 h-4" />
                         ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4" />
-                            <span className="hidden sm:inline">Needs auth</span>
-                          </>
+                          <AlertCircle className="w-4 h-4" />
                         )}
                       </div>
                       

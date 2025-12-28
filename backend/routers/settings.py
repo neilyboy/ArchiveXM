@@ -40,6 +40,8 @@ class CredentialResponse(BaseModel):
     priority: int
     active_streams: int
     has_valid_session: bool
+    session_expires_at: Optional[str] = None
+    session_expires_in: Optional[str] = None
     created_at: str
 
 
@@ -67,6 +69,8 @@ async def list_credentials(db: DBSession = Depends(get_db)):
             priority=cred.priority,
             active_streams=cred_stat['active_streams'],
             has_valid_session=cred_stat['has_valid_session'],
+            session_expires_at=cred_stat.get('session_expires_at'),
+            session_expires_in=cred_stat.get('session_expires_in'),
             created_at=cred.created_at.isoformat() if cred.created_at else ""
         ))
     
