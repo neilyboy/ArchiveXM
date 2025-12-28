@@ -6,8 +6,7 @@ import ChannelDetailPage from './pages/ChannelDetailPage'
 import JukeboxPage from './pages/JukeboxPage'
 import Layout from './components/Layout'
 import DownloadStatus from './components/DownloadStatus'
-import PlayerBar from './components/PlayerBar'
-import JukeboxPlayerBar from './components/JukeboxPlayerBar'
+import UnifiedPlayerBar from './components/UnifiedPlayerBar'
 import { PlayerProvider } from './context/PlayerContext'
 import { JukeboxProvider } from './context/JukeboxContext'
 import { api } from './services/api'
@@ -82,8 +81,7 @@ function AppContent({ isConfigured, setIsConfigured }) {
         />
       </Routes>
       {isConfigured && <DownloadStatus />}
-      {isConfigured && !isJukeboxPage && <PlayerBar />}
-      {isConfigured && !isJukeboxPage && <JukeboxPlayerBar />}
+      {isConfigured && !isJukeboxPage && <UnifiedPlayerBar />}
     </div>
   )
 }

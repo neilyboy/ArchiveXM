@@ -56,6 +56,11 @@ function JukeboxPage() {
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [trackToAdd, setTrackToAdd] = useState(null)
   
+  // Playlist editing
+  const [editingPlaylist, setEditingPlaylist] = useState(null)
+  const [editPlaylistName, setEditPlaylistName] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
+  
   // Context menu for track actions
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, track: null, index: -1 })
 
@@ -170,13 +175,61 @@ function JukeboxPage() {
   const playPlaylist = (playlist) => {
     if (playlist.tracks && playlist.tracks.length > 0) {
       const playlistTracks = playlist.tracks.map(pt => pt.track)
-      setQueue(playlistTracks)
-      setCurrentIndex(0)
-      if (audioRef.current) {
-        audioRef.current.src = libraryApi.getStreamUrl(playlistTracks[0].id)
-        audioRef.current.play()
-        setIsPlaying(true)
+      playAll(playlistTracks)
+    }
+  }
+
+  // Playlist editing
+  const updatePlaylist = async () => {
+    if (!editingPlaylist || !editPlaylistName.trim()) return
+    
+    try {
+      await libraryApi.updatePlaylist(editingPlaylist.id, editPlaylistName)
+      setEditingPlaylist(null)
+      setEditPlaylistName('')
+      // Refresh playlists
+      const res = await libraryApi.getPlaylists()
+      setPlaylists(res.data || [])
+      // Refresh selected playlist if it was the one edited
+      if (selectedPlaylist?.id === editingPlaylist.id) {
+        const playlistRes = await libraryApi.getPlaylist(editingPlaylist.id)
+        setSelectedPlaylist(playlistRes.data)
       }
+    } catch (error) {
+      console.error('Error updating playlist:', error)
+    }
+  }
+
+  const deletePlaylist = async (playlistId) => {
+    try {
+      await libraryApi.deletePlaylist(playlistId)
+      setShowDeleteConfirm(null)
+      // Refresh playlists
+      const res = await libraryApi.getPlaylists()
+      setPlaylists(res.data || [])
+      // Go back to tracks view if deleted playlist was selected
+      if (selectedPlaylist?.id === playlistId) {
+        setSelectedPlaylist(null)
+        setActiveView('tracks')
+      }
+    } catch (error) {
+      console.error('Error deleting playlist:', error)
+    }
+  }
+
+  const removeTrackFromPlaylist = async (trackId) => {
+    if (!selectedPlaylist) return
+    
+    try {
+      await libraryApi.removeFromPlaylist(selectedPlaylist.id, trackId)
+      // Refresh playlist
+      const res = await libraryApi.getPlaylist(selectedPlaylist.id)
+      setSelectedPlaylist(res.data)
+      // Refresh playlists list for track count
+      const playlistsRes = await libraryApi.getPlaylists()
+      setPlaylists(playlistsRes.data || [])
+    } catch (error) {
+      console.error('Error removing track from playlist:', error)
     }
   }
 
@@ -479,47 +532,88 @@ function JukeboxPage() {
                   <div className="w-32 h-32 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
                     <List className="w-12 h-12 text-white" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h2 className="text-2xl font-bold text-white">{selectedPlaylist.name}</h2>
                     <p className="text-gray-400">{selectedPlaylist.track_count} tracks</p>
-                    <button
-                      onClick={() => playPlaylist(selectedPlaylist)}
-                      className="mt-2 flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-full transition-colors"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span>Play</span>
-                    </button>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={() => playPlaylist(selectedPlaylist)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-full transition-colors"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Play</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPlaylist(selectedPlaylist)
+                          setEditPlaylistName(selectedPlaylist.name)
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
+                        title="Edit playlist"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(selectedPlaylist.id)}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-red-600 text-white rounded-full transition-colors"
+                        title="Delete playlist"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <table className="w-full">
-                  <thead className="text-left text-sm text-gray-400 border-b border-gray-800">
-                    <tr>
-                      <th className="px-4 py-3 w-12">#</th>
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Artist</th>
-                      <th className="px-4 py-3 w-20">
-                        <Clock className="w-4 h-4" />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedPlaylist.tracks?.map((pt, index) => (
-                      <tr
-                        key={pt.track.id}
-                        className="hover:bg-gray-800/50 transition-colors cursor-pointer"
-                        onDoubleClick={() => {
-                          const playlistTracks = selectedPlaylist.tracks.map(p => p.track)
-                          playTrack(pt.track, index, playlistTracks)
-                        }}
-                      >
-                        <td className="px-4 py-3 text-gray-500">{index + 1}</td>
-                        <td className="px-4 py-3 text-white">{pt.track.title || pt.track.filename}</td>
-                        <td className="px-4 py-3 text-gray-400">{pt.track.artist || 'Unknown'}</td>
-                        <td className="px-4 py-3 text-gray-500">{formatTime(pt.track.duration_seconds)}</td>
+                
+                {selectedPlaylist.tracks?.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <List className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>This playlist is empty</p>
+                    <p className="text-sm">Add tracks from All Tracks view</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="text-left text-sm text-gray-400 border-b border-gray-800">
+                      <tr>
+                        <th className="px-4 py-3 w-12">#</th>
+                        <th className="px-4 py-3">Title</th>
+                        <th className="px-4 py-3">Artist</th>
+                        <th className="px-4 py-3 w-20">
+                          <Clock className="w-4 h-4" />
+                        </th>
+                        <th className="px-4 py-3 w-12"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {selectedPlaylist.tracks?.map((pt, index) => (
+                        <tr
+                          key={pt.track.id}
+                          className="hover:bg-gray-800/50 transition-colors cursor-pointer group"
+                          onDoubleClick={() => {
+                            const playlistTracks = selectedPlaylist.tracks.map(p => p.track)
+                            playTrack(pt.track, index, playlistTracks)
+                          }}
+                        >
+                          <td className="px-4 py-3 text-gray-500">{index + 1}</td>
+                          <td className="px-4 py-3 text-white">{pt.track.title || pt.track.filename}</td>
+                          <td className="px-4 py-3 text-gray-400">{pt.track.artist || 'Unknown'}</td>
+                          <td className="px-4 py-3 text-gray-500">{formatTime(pt.track.duration_seconds)}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeTrackFromPlaylist(pt.track.id)
+                              }}
+                              className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all"
+                              title="Remove from playlist"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </div>
@@ -744,6 +838,61 @@ function JukeboxPage() {
                 className="px-4 py-2 text-gray-400 hover:text-white"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Playlist Modal */}
+      {editingPlaylist && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-xl p-6 w-96">
+            <h3 className="text-xl font-bold text-white mb-4">Edit Playlist</h3>
+            <input
+              type="text"
+              placeholder="Playlist name"
+              value={editPlaylistName}
+              onChange={(e) => setEditPlaylistName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white mb-4 focus:outline-none focus:border-primary"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setEditingPlaylist(null); setEditPlaylistName('') }}
+                className="px-4 py-2 text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updatePlaylist}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Playlist Confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-xl p-6 w-96">
+            <h3 className="text-xl font-bold text-white mb-2">Delete Playlist?</h3>
+            <p className="text-gray-400 mb-6">This action cannot be undone. The tracks will remain in your library.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deletePlaylist(showDeleteConfirm)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>
