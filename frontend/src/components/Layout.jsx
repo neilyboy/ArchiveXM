@@ -1,13 +1,18 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Radio, Settings, Download, RefreshCw, Disc3 } from 'lucide-react'
 import { useState } from 'react'
+import { useJukebox } from '../context/JukeboxContext'
 
 function Layout() {
   const location = useLocation()
   const [refreshing, setRefreshing] = useState(false)
+  const { currentTrack } = useJukebox()
+  
+  // Add top padding when Jukebox bar is visible at top
+  const hasJukeboxBar = !!currentTrack
 
   return (
-    <div className="min-h-screen bg-sxm-dark">
+    <div className={`min-h-screen bg-sxm-dark ${hasJukeboxBar ? 'pt-14' : ''}`}>
       {/* Header */}
       <header className="bg-sxm-darker border-b border-sxm-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3">
