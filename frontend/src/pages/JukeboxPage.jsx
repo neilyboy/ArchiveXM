@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { 
   Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Shuffle, Repeat, List, Plus, Search, RefreshCw, Disc3,
   MoreVertical, Trash2, ListPlus, X, ChevronLeft, ChevronRight,
-  Clock, Library, User, Album, Loader2, Radio, Home
+  Clock, Library, User, Album, Loader2, Radio, Home, Circle, Square
 } from 'lucide-react'
 import { libraryApi } from '../services/api'
 import { useJukebox } from '../context/JukeboxContext'
 import { usePlayer } from '../context/PlayerContext'
+import { useRecording } from '../context/RecordingContext'
 
 function JukeboxPage() {
+  const navigate = useNavigate()
+  
   // Get global jukebox state
   const {
     queue,
@@ -43,6 +46,9 @@ function JukeboxPage() {
 
   // Get live stream player state
   const livePlayer = usePlayer()
+  
+  // Get recording state
+  const { isRecording, recordingData, stopRecording } = useRecording()
 
   // Library state
   const [tracks, setTracks] = useState([])
@@ -430,6 +436,36 @@ function JukeboxPage() {
               <span>Back to Channels</span>
             </Link>
           </div>
+          
+          {/* Recording Indicator */}
+          {isRecording && (
+            <div className="p-3 border-b border-gray-800 bg-red-900/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Circle className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" />
+                <span className="text-red-400 text-sm font-medium">Recording</span>
+              </div>
+              {recordingData?.currentTrack && (
+                <div className="text-sm text-gray-300 truncate mb-2">
+                  {recordingData.currentTrack.artist} - {recordingData.currentTrack.title}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/channel/${recordingData?.channelId}`)}
+                  className="flex-1 px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                >
+                  View Channel
+                </button>
+                <button
+                  onClick={() => stopRecording(true)}
+                  className="flex-1 px-2 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition-colors flex items-center justify-center gap-1"
+                >
+                  <Square className="w-3 h-3" />
+                  Stop
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Navigation */}
           <nav className="p-2 space-y-1">
