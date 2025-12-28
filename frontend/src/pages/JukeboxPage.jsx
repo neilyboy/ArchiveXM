@@ -42,6 +42,7 @@ function JukeboxPage() {
     setRepeat,
     setQueue,
     setCurrentIndex,
+    playQueue,
   } = useJukebox()
 
   // Get live stream player state
@@ -59,7 +60,7 @@ function JukeboxPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeView, setActiveView] = useState('tracks') // tracks, playlist
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
-  const [showQueue, setShowQueue] = useState(false)
+  const [showQueue, setShowQueue] = useState(true) // Show queue by default
   
   // Playlist modal
   const [showPlaylistModal, setShowPlaylistModal] = useState(false)
@@ -797,15 +798,9 @@ function JukeboxPage() {
         {/* Queue Panel */}
         {showQueue && (
           <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col">
-            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-              <h3 className="font-medium text-white">Queue</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={clearQueue}
-                  className="text-gray-400 hover:text-white text-sm"
-                >
-                  Clear
-                </button>
+            <div className="p-4 border-b border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-white">Queue</h3>
                 <button
                   onClick={() => setShowQueue(false)}
                   className="text-gray-400 hover:text-white"
@@ -813,29 +808,65 @@ function JukeboxPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {queue.map((track, index) => (
-                <div
-                  key={`${track.id}-${index}`}
-                  className={`flex items-center gap-3 p-3 hover:bg-gray-800 ${
-                    index === currentIndex ? 'bg-primary/20' : ''
-                  }`}
-                >
-                  <span className="text-gray-500 text-sm w-6">{index + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">{track.title || track.filename}</p>
-                    <p className="text-gray-500 text-xs truncate">{track.artist || 'Unknown'}</p>
-                  </div>
+              {queue.length > 0 && (
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => removeFromQueue(index)}
-                    className="text-gray-500 hover:text-red-400"
+                    onClick={() => playQueue(0)}
+                    disabled={queue.length === 0}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
                   >
-                    <X className="w-4 h-4" />
+                    <Play className="w-4 h-4" />
+                    Play Queue
+                  </button>
+                  <button
+                    onClick={() => clearQueue(isPlaying)}
+                    className="px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg text-sm transition-colors"
+                    title={isPlaying ? "Clear except current" : "Clear all"}
+                  >
+                    Clear
                   </button>
                 </div>
-              ))}
+              )}
             </div>
+            <div className="flex-1 overflow-y-auto">
+              {queue.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  <List className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Queue is empty</p>
+                  <p className="text-xs mt-1">Click + on tracks to add them</p>
+                </div>
+              ) : (
+                queue.map((track, index) => (
+                  <div
+                    key={`${track.id}-${index}`}
+                    onClick={() => playQueue(index)}
+                    className={`flex items-center gap-3 p-3 hover:bg-gray-800 cursor-pointer group ${
+                      index === currentIndex ? 'bg-primary/20' : ''
+                    }`}
+                  >
+                    <span className="text-gray-500 text-sm w-6 group-hover:hidden">{index + 1}</span>
+                    <Play className="w-4 h-4 text-white hidden group-hover:block" />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm truncate ${index === currentIndex ? 'text-primary font-medium' : 'text-white'}`}>
+                        {track.title || track.filename}
+                      </p>
+                      <p className="text-gray-500 text-xs truncate">{track.artist || 'Unknown'}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeFromQueue(index) }}
+                      className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            {queue.length > 0 && (
+              <div className="p-3 border-t border-gray-800 text-xs text-gray-500">
+                {queue.length} track{queue.length !== 1 ? 's' : ''} in queue
+              </div>
+            )}
           </div>
         )}
       </div>

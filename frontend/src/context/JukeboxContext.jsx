@@ -209,15 +209,37 @@ export function JukeboxProvider({ children }) {
     }
   }, [currentIndex, queue])
 
-  const clearQueue = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ''
+  const clearQueue = useCallback((keepCurrent = false) => {
+    if (keepCurrent && currentIndex >= 0 && queue[currentIndex]) {
+      // Keep current track, remove everything else
+      const current = queue[currentIndex]
+      setQueue([current])
+      setCurrentIndex(0)
+    } else {
+      // Full clear - stop playback
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+      }
+      setQueue([])
+      setCurrentIndex(-1)
+      setIsPlaying(false)
     }
-    setQueue([])
-    setCurrentIndex(-1)
-    setIsPlaying(false)
-  }, [])
+  }, [currentIndex, queue])
+
+  // Play the queue from the beginning (or from a specific index)
+  const playQueue = useCallback((startIndex = 0) => {
+    if (queue.length === 0) return
+    pauseLiveStream()
+    const idx = Math.min(startIndex, queue.length - 1)
+    setCurrentIndex(idx)
+    if (audioRef.current) {
+      audioRef.current.src = libraryApi.getStreamUrl(queue[idx].id)
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(console.error)
+    }
+  }, [queue, pauseLiveStream])
 
   const playAll = useCallback((tracks) => {
     if (tracks.length === 0) return
@@ -272,6 +294,7 @@ export function JukeboxProvider({ children }) {
     addToQueue,
     removeFromQueue,
     clearQueue,
+    playQueue,
     playAll,
     shuffleAll,
     setVolume,
