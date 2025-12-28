@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { libraryApi } from '../services/api'
 import { useJukebox } from '../context/JukeboxContext'
+import { usePlayer } from '../context/PlayerContext'
 
 function JukeboxPage() {
   // Get global jukebox state
@@ -39,6 +40,9 @@ function JukeboxPage() {
     setQueue,
     setCurrentIndex,
   } = useJukebox()
+
+  // Get live stream player state
+  const livePlayer = usePlayer()
 
   // Library state
   const [tracks, setTracks] = useState([])
@@ -118,10 +122,18 @@ function JukeboxPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Pause live stream before starting Jukebox playback
+  const pauseLiveIfPlaying = () => {
+    if (livePlayer.isPlaying) {
+      livePlayer.togglePlay()
+    }
+  }
+
   // Local playAll/shuffleAll that use filtered tracks
   const handlePlayAll = () => {
     const filtered = getFilteredTracks()
     if (filtered.length > 0) {
+      pauseLiveIfPlaying()
       playAll(filtered)
     }
   }
@@ -129,8 +141,15 @@ function JukeboxPage() {
   const handleShuffleAll = () => {
     const filtered = getFilteredTracks()
     if (filtered.length > 0) {
+      pauseLiveIfPlaying()
       shuffleAll(filtered)
     }
+  }
+
+  // Wrapper to pause live stream before playing track
+  const handlePlayTrack = (track, index, trackList) => {
+    pauseLiveIfPlaying()
+    playTrack(track, index, trackList)
   }
 
   // Playlist management
@@ -172,10 +191,15 @@ function JukeboxPage() {
     }
   }
 
-  const playPlaylist = (playlist) => {
+  const playPlaylist = (playlist, shuffleMode = false) => {
     if (playlist.tracks && playlist.tracks.length > 0) {
+      pauseLiveIfPlaying()
       const playlistTracks = playlist.tracks.map(pt => pt.track)
-      playAll(playlistTracks)
+      if (shuffleMode) {
+        shuffleAll(playlistTracks)
+      } else {
+        playAll(playlistTracks)
+      }
     }
   }
 
@@ -266,7 +290,7 @@ function JukeboxPage() {
   // Play now from context menu
   const handlePlayNow = () => {
     if (contextMenu.track) {
-      playTrack(contextMenu.track, contextMenu.index, filteredTracks)
+      handlePlayTrack(contextMenu.track, contextMenu.index, filteredTracks)
     }
     closeContextMenu()
   }
@@ -299,6 +323,91 @@ function JukeboxPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-950" onClick={closeContextMenu}>
+      {/* Live Stream Bar - shows when live stream is active */}
+      {livePlayer.currentChannel && (
+        <div className="bg-gray-900 border-b border-gray-700 px-4 py-2 flex-shrink-0">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded overflow-hidden bg-gray-800 flex-shrink-0">
+                {livePlayer.currentChannel.image ? (
+                  <img 
+                    src={livePlayer.currentChannel.image} 
+                    alt={livePlayer.currentChannel.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Radio className="w-5 h-5 text-gray-500" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-red-600/20 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                    <span className="text-[10px] text-red-400 font-medium">LIVE</span>
+                  </div>
+                  <span className="text-sm text-primary font-medium truncate">
+                    {livePlayer.currentChannel.name}
+                  </span>
+                </div>
+                {livePlayer.currentTrack && (
+                  <p className="text-white text-sm truncate">
+                    {livePlayer.currentTrack.artist} - {livePlayer.currentTrack.title}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={livePlayer.togglePlay}
+                disabled={livePlayer.isLoading}
+                className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50"
+              >
+                {livePlayer.isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : livePlayer.isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4 ml-0.5" />
+                )}
+              </button>
+              <button
+                onClick={() => livePlayer.setIsMuted(!livePlayer.isMuted)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                {livePlayer.isMuted || livePlayer.volume === 0 ? (
+                  <VolumeX className="w-4 h-4" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={livePlayer.isMuted ? 0 : livePlayer.volume}
+                onChange={(e) => livePlayer.setVolume(parseFloat(e.target.value))}
+                className="w-20 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none
+                  [&::-webkit-slider-thumb]:w-2
+                  [&::-webkit-slider-thumb]:h-2
+                  [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-white"
+              />
+              <button
+                onClick={livePlayer.stop}
+                className="text-gray-400 hover:text-red-400 transition-colors"
+                title="Stop live stream"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
@@ -463,7 +572,7 @@ function JukeboxPage() {
                         currentTrack?.id === track.id ? 'bg-primary/20' : ''
                       }`}
                       onClick={(e) => handleTrackClick(e, track, index)}
-                      onDoubleClick={() => playTrack(track, index, filteredTracks)}
+                      onDoubleClick={() => handlePlayTrack(track, index, filteredTracks)}
                     >
                       <td className="px-4 py-3 text-gray-500">
                         {currentTrack?.id === track.id && isPlaying ? (
@@ -474,7 +583,7 @@ function JukeboxPage() {
                           </div>
                         ) : (
                           <button
-                            onClick={(e) => { e.stopPropagation(); playTrack(track, index, filteredTracks) }}
+                            onClick={(e) => { e.stopPropagation(); handlePlayTrack(track, index, filteredTracks) }}
                             className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-700 rounded transition-colors"
                           >
                             <Play className="w-3 h-3" />
@@ -529,8 +638,16 @@ function JukeboxPage() {
             {activeView === 'playlist' && selectedPlaylist && (
               <div className="p-4">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-32 h-32 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
-                    <List className="w-12 h-12 text-white" />
+                  <div className="w-32 h-32 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center overflow-hidden">
+                    {selectedPlaylist.tracks?.[0]?.track?.cover_art_path ? (
+                      <img 
+                        src={libraryApi.getCoverUrl(selectedPlaylist.tracks[0].track.id)} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <List className="w-12 h-12 text-white" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <h2 className="text-2xl font-bold text-white">{selectedPlaylist.name}</h2>
@@ -544,12 +661,19 @@ function JukeboxPage() {
                         <span>Play</span>
                       </button>
                       <button
+                        onClick={() => playPlaylist(selectedPlaylist, true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
+                      >
+                        <Shuffle className="w-4 h-4" />
+                        <span>Shuffle</span>
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingPlaylist(selectedPlaylist)
                           setEditPlaylistName(selectedPlaylist.name)
                         }}
                         className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
-                        title="Edit playlist"
+                        title="Rename playlist"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -590,11 +714,26 @@ function JukeboxPage() {
                           className="hover:bg-gray-800/50 transition-colors cursor-pointer group"
                           onDoubleClick={() => {
                             const playlistTracks = selectedPlaylist.tracks.map(p => p.track)
-                            playTrack(pt.track, index, playlistTracks)
+                            handlePlayTrack(pt.track, index, playlistTracks)
                           }}
                         >
                           <td className="px-4 py-3 text-gray-500">{index + 1}</td>
-                          <td className="px-4 py-3 text-white">{pt.track.title || pt.track.filename}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                {pt.track.cover_art_path ? (
+                                  <img 
+                                    src={libraryApi.getCoverUrl(pt.track.id)} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <Music className="w-5 h-5 text-gray-600" />
+                                )}
+                              </div>
+                              <span className="text-white truncate">{pt.track.title || pt.track.filename}</span>
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-gray-400">{pt.track.artist || 'Unknown'}</td>
                           <td className="px-4 py-3 text-gray-500">{formatTime(pt.track.duration_seconds)}</td>
                           <td className="px-4 py-3">
