@@ -58,6 +58,21 @@ export function PlayerProvider({ children }) {
     }
   }, [volume, isMuted])
 
+  // Register pause function with JukeboxContext so it can pause live stream
+  useEffect(() => {
+    if (jukebox?.registerPauseLiveStream) {
+      const pauseLive = () => {
+        // Check audio element directly to avoid stale closure
+        if (audioRef.current && !audioRef.current.paused) {
+          console.log('[Player] Pausing live stream for Jukebox')
+          audioRef.current.pause()
+          setIsPlaying(false)
+        }
+      }
+      jukebox.registerPauseLiveStream(pauseLive)
+    }
+  }, [jukebox])
+
   const playChannel = useCallback(async (channel) => {
     if (!channel) return
     

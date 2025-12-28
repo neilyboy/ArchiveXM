@@ -5,6 +5,19 @@ const JukeboxContext = createContext(null)
 
 export function JukeboxProvider({ children }) {
   const audioRef = useRef(null)
+  const pauseLiveStreamRef = useRef(null) // Callback to pause live stream
+  
+  // Register callback from PlayerContext to pause live stream
+  const registerPauseLiveStream = useCallback((callback) => {
+    pauseLiveStreamRef.current = callback
+  }, [])
+
+  // Helper to pause live stream before Jukebox playback
+  const pauseLiveStream = useCallback(() => {
+    if (pauseLiveStreamRef.current) {
+      pauseLiveStreamRef.current()
+    }
+  }, [])
   
   // Queue and playback state
   const [queue, setQueue] = useState([])
@@ -52,6 +65,9 @@ export function JukeboxProvider({ children }) {
 
   // Play a specific track
   const playTrack = useCallback((track, index = -1, trackList = null) => {
+    // Pause live stream before starting Jukebox playback
+    pauseLiveStream()
+    
     if (trackList) {
       setQueue(trackList)
       setCurrentIndex(index >= 0 ? index : trackList.findIndex(t => t.id === track.id))
@@ -70,7 +86,7 @@ export function JukeboxProvider({ children }) {
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [queue])
+  }, [queue, pauseLiveStream])
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current || !currentTrack) return
@@ -79,11 +95,13 @@ export function JukeboxProvider({ children }) {
       audioRef.current.pause()
       setIsPlaying(false)
     } else {
+      // Pause live stream before resuming Jukebox
+      pauseLiveStream()
       audioRef.current.play()
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [isPlaying, currentTrack])
+  }, [isPlaying, currentTrack, pauseLiveStream])
 
   const pause = useCallback(() => {
     if (audioRef.current && isPlaying) {
@@ -94,11 +112,13 @@ export function JukeboxProvider({ children }) {
 
   const resume = useCallback(() => {
     if (audioRef.current && currentTrack && !isPlaying) {
+      // Pause live stream before resuming Jukebox
+      pauseLiveStream()
       audioRef.current.play()
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [currentTrack, isPlaying])
+  }, [currentTrack, isPlaying, pauseLiveStream])
 
   const playNext = useCallback(() => {
     if (queue.length === 0) return
@@ -201,6 +221,8 @@ export function JukeboxProvider({ children }) {
 
   const playAll = useCallback((tracks) => {
     if (tracks.length === 0) return
+    // Pause live stream before starting Jukebox playback
+    pauseLiveStream()
     setQueue(tracks)
     setCurrentIndex(0)
     if (audioRef.current) {
@@ -209,10 +231,12 @@ export function JukeboxProvider({ children }) {
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [])
+  }, [pauseLiveStream])
 
   const shuffleAll = useCallback((tracks) => {
     if (tracks.length === 0) return
+    // Pause live stream before starting Jukebox playback
+    pauseLiveStream()
     const shuffled = [...tracks].sort(() => Math.random() - 0.5)
     setQueue(shuffled)
     setCurrentIndex(0)
@@ -223,7 +247,7 @@ export function JukeboxProvider({ children }) {
         .then(() => setIsPlaying(true))
         .catch(console.error)
     }
-  }, [])
+  }, [pauseLiveStream])
 
   const value = {
     // State
@@ -256,6 +280,8 @@ export function JukeboxProvider({ children }) {
     setRepeat,
     setQueue,
     setCurrentIndex,
+    // Callback registration for cross-context communication
+    registerPauseLiveStream,
   }
 
   return (
