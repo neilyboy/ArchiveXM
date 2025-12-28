@@ -122,7 +122,8 @@ class LiveRecorder:
             self.wait_for_track_on_stop = wait_for_track_end
             
             # Wait for the recording task to finish (with reasonable timeout)
-            max_wait = 35 if wait_for_track_end else 10
+            # Up to 70s for wait_for_track (60s max track wait + 10s buffer)
+            max_wait = 70 if wait_for_track_end else 10
             
             if self.recording_task:
                 try:
@@ -173,8 +174,13 @@ class LiveRecorder:
         last_track_id = None
         last_track = None
         segment_buffer = []
-        seen_segment_urls = set()
+        seen_segments = set()  # Track segment IDs (filenames) we've seen
         key_bytes = None
+        
+        # Helper to get unique segment ID (filename part of URL)
+        def get_segment_id(seg):
+            url = seg.get('url', '')
+            return url.split('/')[-1] if url else None
         
         recording_start = datetime.now(timezone.utc)
         print(f"🎬 Recording started at {recording_start.isoformat()}")
@@ -206,28 +212,31 @@ class LiveRecorder:
                 
                 if 'segments' in playlist_data:
                     for seg in playlist_data['segments']:
-                        seg_time = seg.get('program_date_time')
-                        if seg_time:
+                        seg_id = get_segment_id(seg)
+                        seg_time = seg.get('timestamp')
+                        if seg_id and seg_time:
                             try:
                                 seg_dt = datetime.fromisoformat(seg_time.replace('Z', '+00:00'))
-                                # Include segments from current track onwards
-                                if seg_dt >= track_start:
-                                    seg_url = seg.get('url')
-                                    if seg_url and seg_url not in seen_segment_urls:
-                                        seen_segment_urls.add(seg_url)
-                                        segment_buffer.append(seg)
+                                if seg_dt >= track_start and seg_id not in seen_segments:
+                                    seen_segments.add(seg_id)
+                                    segment_buffer.append(seg)
+                                else:
+                                    seen_segments.add(seg_id)
                             except:
-                                pass
-                        else:
-                            # No timestamp, mark as seen but don't include
-                            seen_segment_urls.add(seg.get('url'))
+                                seen_segments.add(seg_id)
+                        elif seg_id:
+                            seen_segments.add(seg_id)
                     
                     print(f"📥 Included {len(segment_buffer)} segments from current track")
             
-            # Mark remaining segments as seen
+            # Mark all current segments as seen
             if 'segments' in playlist_data:
                 for seg in playlist_data['segments']:
-                    seen_segment_urls.add(seg.get('url'))
+                    seg_id = get_segment_id(seg)
+                    if seg_id:
+                        seen_segments.add(seg_id)
+            
+            print(f"📝 Tracking {len(seen_segments)} existing segments")
             
             # Main recording loop
             while self.is_recording and not self.stop_requested:
@@ -261,9 +270,9 @@ class LiveRecorder:
                     if 'segments' in playlist_data:
                         new_count = 0
                         for seg in playlist_data['segments']:
-                            seg_url = seg.get('url')
-                            if seg_url and seg_url not in seen_segment_urls:
-                                seen_segment_urls.add(seg_url)
+                            seg_id = get_segment_id(seg)
+                            if seg_id and seg_id not in seen_segments:
+                                seen_segments.add(seg_id)
                                 segment_buffer.append(seg)
                                 new_count += 1
                         
@@ -289,36 +298,49 @@ class LiveRecorder:
                     await asyncio.sleep(5)
             
             # Handle stop - optionally wait for track to end
-            if self.stop_requested and self.wait_for_track_on_stop and last_track:
+            save_final_track = True
+            if self.stop_requested and last_track:
                 try:
                     track_start = datetime.fromisoformat(
                         last_track['timestamp_utc'].replace('Z', '+00:00')
                     )
                     track_end = track_start + timedelta(milliseconds=last_track.get('duration_ms', 0))
                     now = datetime.now(timezone.utc)
+                    remaining_seconds = (track_end - now).total_seconds()
                     
-                    if track_end > now:
-                        wait_seconds = min((track_end - now).total_seconds() + 2, 30)
-                        print(f"⏳ Waiting {wait_seconds:.0f}s for track to finish...")
-                        
-                        # Continue collecting segments while waiting
-                        wait_until = datetime.now(timezone.utc) + timedelta(seconds=wait_seconds)
-                        while datetime.now(timezone.utc) < wait_until:
-                            playlist_data = await self.hls_service.get_variant_playlist(channel_id)
-                            if 'segments' in playlist_data:
-                                for seg in playlist_data['segments']:
-                                    seg_url = seg.get('url')
-                                    if seg_url and seg_url not in seen_segment_urls:
-                                        seen_segment_urls.add(seg_url)
-                                        segment_buffer.append(seg)
-                            await asyncio.sleep(3)
+                    if self.wait_for_track_on_stop:
+                        # "Wait for track" mode
+                        if remaining_seconds > 0 and remaining_seconds <= 60:
+                            # Track ends within 60s - wait for it
+                            print(f"⏳ Waiting {remaining_seconds:.0f}s for track to finish...")
+                            wait_until = track_end + timedelta(seconds=2)
+                            while datetime.now(timezone.utc) < wait_until:
+                                playlist_data = await self.hls_service.get_variant_playlist(channel_id)
+                                if 'segments' in playlist_data:
+                                    for seg in playlist_data['segments']:
+                                        seg_id = get_segment_id(seg)
+                                        if seg_id and seg_id not in seen_segments:
+                                            seen_segments.add(seg_id)
+                                            segment_buffer.append(seg)
+                                await asyncio.sleep(3)
+                        elif remaining_seconds > 60:
+                            # Track has > 60s left - skip to avoid partial
+                            print(f"⏭️ Skipping current track ({remaining_seconds:.0f}s remaining) - no partials")
+                            save_final_track = False
+                    else:
+                        # "Stop now" mode - skip partial track
+                        if remaining_seconds > 5:
+                            print(f"⏭️ Skipping partial track ({remaining_seconds:.0f}s remaining)")
+                            save_final_track = False
                 except Exception as e:
-                    print(f"⚠️ Error waiting for track end: {e}")
+                    print(f"⚠️ Error handling track end: {e}")
             
-            # Save final track
-            if last_track and segment_buffer:
+            # Save final track only if complete
+            if save_final_track and last_track and segment_buffer:
                 print(f"💾 Saving final track: {last_track.get('artist')} - {last_track.get('title')} ({len(segment_buffer)} segments)")
                 await self._save_track(last_track, segment_buffer, key_bytes)
+            elif not save_final_track and last_track:
+                print(f"🚫 Discarded partial track: {last_track.get('artist')} - {last_track.get('title')}")
             
             self.is_recording = False
             print(f"🏁 Recording loop finished. Total tracks: {len(self.tracks_recorded)}")
