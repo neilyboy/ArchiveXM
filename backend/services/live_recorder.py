@@ -251,8 +251,13 @@ class LiveRecorder:
                         print(f"🎵 Track change: {current_track.get('artist')} - {current_track.get('title')}")
                         
                         if last_track and segment_buffer:
-                            print(f"   💾 Saving {len(segment_buffer)} segments for: {last_track.get('artist')} - {last_track.get('title')}")
-                            await self._save_track(last_track, segment_buffer, key_bytes)
+                            # Use next track's start as the end boundary for precise trimming
+                            next_track_start = current_track.get('timestamp_utc')
+                            filtered_segments = self._filter_segments_for_track(
+                                segment_buffer, last_track, next_track_start
+                            )
+                            print(f"   💾 Saving {len(filtered_segments)} segments (from {len(segment_buffer)}) for: {last_track.get('artist')} - {last_track.get('title')}")
+                            await self._save_track(last_track, filtered_segments, key_bytes)
                             segment_buffer = []
                         
                         last_track = current_track
@@ -337,8 +342,12 @@ class LiveRecorder:
             
             # Save final track only if complete
             if save_final_track and last_track and segment_buffer:
-                print(f"💾 Saving final track: {last_track.get('artist')} - {last_track.get('title')} ({len(segment_buffer)} segments)")
-                await self._save_track(last_track, segment_buffer, key_bytes)
+                # Filter segments for this track (no next track, so use duration)
+                filtered_segments = self._filter_segments_for_track(
+                    segment_buffer, last_track, None
+                )
+                print(f"💾 Saving final track: {last_track.get('artist')} - {last_track.get('title')} ({len(filtered_segments)} segments from {len(segment_buffer)})")
+                await self._save_track(last_track, filtered_segments, key_bytes)
             elif not save_final_track and last_track:
                 print(f"🚫 Discarded partial track: {last_track.get('artist')} - {last_track.get('title')}")
             
@@ -352,18 +361,75 @@ class LiveRecorder:
         finally:
             self.is_recording = False
     
+    def _filter_segments_for_track(
+        self,
+        segments: List[Dict],
+        track: Dict,
+        next_track_start: str = None
+    ) -> List[Dict]:
+        """
+        Filter segments to only include those within the track's time window.
+        Uses next track's start time for precise end boundary.
+        """
+        try:
+            track_start = datetime.fromisoformat(
+                track['timestamp_utc'].replace('Z', '+00:00')
+            )
+            
+            # Use next track start if available, otherwise use duration
+            if next_track_start:
+                track_end = datetime.fromisoformat(
+                    next_track_start.replace('Z', '+00:00')
+                )
+            else:
+                track_end = track_start + timedelta(
+                    milliseconds=track.get('duration_ms', 300000)
+                )
+            
+            filtered = []
+            for seg in segments:
+                seg_time_str = seg.get('timestamp')
+                if not seg_time_str:
+                    continue
+                
+                seg_time = datetime.fromisoformat(seg_time_str.replace('Z', '+00:00'))
+                seg_duration = seg.get('duration', 9.75)
+                seg_end = seg_time + timedelta(seconds=seg_duration)
+                
+                # Include if segment overlaps with track window
+                if seg_time < track_end and seg_end > track_start:
+                    filtered.append(seg)
+            
+            return filtered
+            
+        except Exception as e:
+            print(f"   ⚠️ Error filtering segments: {e}, using all")
+            return segments
+    
     async def _save_track(
         self,
         track: Dict,
         segments: List[Dict],
         key_bytes: Optional[bytes]
     ):
-        """Save a recorded track"""
+        """Save a recorded track to dated folder"""
         try:
             safe_artist = self._sanitize_filename(track.get('artist', 'Unknown'))
             safe_title = self._sanitize_filename(track.get('title', 'Unknown'))
             
-            output_file = self.output_dir / f"{safe_artist} - {safe_title}.m4a"
+            # Create dated subfolder: recordings/YYYY-MM-DD/
+            try:
+                track_date = datetime.fromisoformat(
+                    track['timestamp_utc'].replace('Z', '+00:00')
+                )
+                date_folder = track_date.strftime("%Y-%m-%d")
+            except:
+                date_folder = datetime.now().strftime("%Y-%m-%d")
+            
+            dated_dir = self.output_dir / date_folder
+            dated_dir.mkdir(parents=True, exist_ok=True)
+            
+            output_file = dated_dir / f"{safe_artist} - {safe_title}.m4a"
             
             # Download and decrypt segments
             temp_dir = Path(tempfile.mkdtemp())
