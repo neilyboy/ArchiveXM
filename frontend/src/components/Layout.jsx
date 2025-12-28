@@ -48,8 +48,17 @@ function Layout() {
               {/* Recording Indicator with Current Track */}
               {isRecording && (
                 <div className="relative flex items-center gap-3">
-                  {/* Current Track Info */}
-                  {recordingData?.currentTrack && (
+                  {/* Stopping indicator */}
+                  {recordingData?.stopping && recordingData?.stoppingInSeconds != null && (
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/50 rounded-lg">
+                      <span className="text-yellow-400 text-sm">
+                        Stopping in {Math.ceil(recordingData.stoppingInSeconds)}s...
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Current Track Info - hide when stopping */}
+                  {recordingData?.currentTrack && !recordingData?.stopping && (
                     <div className="hidden sm:flex items-center gap-2 text-sm max-w-xs">
                       <Music className="w-4 h-4 text-red-400 flex-shrink-0" />
                       <span className="text-gray-300 truncate">
@@ -60,11 +69,17 @@ function Layout() {
                   
                   <button
                     onClick={() => setShowStopMenu(!showStopMenu)}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-600/20 border border-red-500/50 rounded-lg hover:bg-red-600/30 transition-colors"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                      recordingData?.stopping 
+                        ? 'bg-yellow-600/20 border border-yellow-500/50' 
+                        : 'bg-red-600/20 border border-red-500/50 hover:bg-red-600/30'
+                    }`}
                   >
-                    <Circle className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" />
-                    <span className="text-red-400 text-sm font-medium">REC</span>
-                    <span className="text-red-300 text-sm">{formatElapsed(recordingData?.elapsedSeconds)}</span>
+                    <Circle className={`w-3 h-3 ${recordingData?.stopping ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500 animate-pulse'}`} />
+                    <span className={`text-sm font-medium ${recordingData?.stopping ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recordingData?.stopping ? 'STOPPING' : 'REC'}
+                    </span>
+                    <span className={`text-sm ${recordingData?.stopping ? 'text-yellow-300' : 'text-red-300'}`}>{formatElapsed(recordingData?.elapsedSeconds)}</span>
                   </button>
                   
                   {/* Stop Menu Dropdown */}

@@ -440,12 +440,21 @@ function JukeboxPage() {
           
           {/* Recording Indicator */}
           {isRecording && (
-            <div className="p-3 border-b border-gray-800 bg-red-900/20">
+            <div className={`p-3 border-b border-gray-800 ${recordingData?.stopping ? 'bg-yellow-900/20' : 'bg-red-900/20'}`}>
               <div className="flex items-center gap-2 mb-2">
-                <Circle className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" />
-                <span className="text-red-400 text-sm font-medium">Recording</span>
+                <Circle className={`w-3 h-3 ${recordingData?.stopping ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500 animate-pulse'}`} />
+                <span className={`text-sm font-medium ${recordingData?.stopping ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {recordingData?.stopping ? 'Stopping...' : 'Recording'}
+                </span>
               </div>
-              {recordingData?.currentTrack && (
+              {/* Stopping countdown */}
+              {recordingData?.stopping && recordingData?.stoppingInSeconds != null && (
+                <div className="text-sm text-yellow-400 mb-2">
+                  Finishing in {Math.ceil(recordingData.stoppingInSeconds)}s
+                </div>
+              )}
+              {/* Current track - show when not stopping */}
+              {recordingData?.currentTrack && !recordingData?.stopping && (
                 <div className="text-sm text-gray-300 truncate mb-2">
                   {recordingData.currentTrack.artist} - {recordingData.currentTrack.title}
                 </div>
@@ -457,13 +466,15 @@ function JukeboxPage() {
                 >
                   View Channel
                 </button>
-                <button
-                  onClick={() => stopRecording(true)}
-                  className="flex-1 px-2 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition-colors flex items-center justify-center gap-1"
-                >
-                  <Square className="w-3 h-3" />
-                  Stop
-                </button>
+                {!recordingData?.stopping && (
+                  <button
+                    onClick={() => stopRecording(true)}
+                    className="flex-1 px-2 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Square className="w-3 h-3" />
+                    Stop
+                  </button>
+                )}
               </div>
             </div>
           )}

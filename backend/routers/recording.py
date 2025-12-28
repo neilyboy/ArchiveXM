@@ -34,6 +34,8 @@ class RecordingStatusResponse(BaseModel):
     elapsed_seconds: Optional[float] = None
     tracks_recorded: Optional[int] = None
     current_track: Optional[CurrentTrackInfo] = None
+    stopping: Optional[bool] = None
+    stopping_in_seconds: Optional[float] = None
 
 
 @router.post("/start")
@@ -127,7 +129,9 @@ async def recording_status():
         start_time=status.get("start_time"),
         elapsed_seconds=status.get("elapsed_seconds"),
         tracks_recorded=status.get("tracks_recorded"),
-        current_track=current_track_info
+        current_track=current_track_info,
+        stopping=status.get("stopping"),
+        stopping_in_seconds=status.get("stopping_in_seconds")
     )
 
 

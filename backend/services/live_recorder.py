@@ -44,6 +44,7 @@ class LiveRecorder:
         self.stop_requested = False
         self.wait_for_track_on_stop = False
         self.current_track = None  # Currently recording track info
+        self.stopping_at = None  # When recording will stop (track end time)
     
     async def start_recording(
         self,
@@ -320,6 +321,7 @@ class LiveRecorder:
                         # "Wait for track" mode
                         if remaining_seconds > 0 and remaining_seconds <= 60:
                             # Track ends within 60s - wait for it
+                            self.stopping_at = track_end  # Set for status reporting
                             print(f"⏳ Waiting {remaining_seconds:.0f}s for track to finish...")
                             wait_until = track_end + timedelta(seconds=2)
                             while datetime.now(timezone.utc) < wait_until:
@@ -481,7 +483,7 @@ class LiveRecorder:
         return result[:100].strip()
     
     def get_status(self) -> Dict:
-        """Get current recording status including current track"""
+        """Get current recording status including current track and stopping state"""
         if not self.is_recording:
             return {
                 'recording': False
@@ -494,8 +496,17 @@ class LiveRecorder:
             'channel_id': self.current_channel,
             'start_time': self.start_time.isoformat(),
             'elapsed_seconds': elapsed,
-            'tracks_recorded': len(self.tracks_recorded)
+            'tracks_recorded': len(self.tracks_recorded),
+            'stopping': self.stop_requested
         }
+        
+        # Include stopping time if waiting for track to finish
+        if self.stop_requested and self.stopping_at:
+            remaining = (self.stopping_at - datetime.now(timezone.utc)).total_seconds()
+            if remaining > 0:
+                result['stopping_in_seconds'] = remaining
+            else:
+                result['stopping_in_seconds'] = 0
         
         # Include current track info if available
         if self.current_track:

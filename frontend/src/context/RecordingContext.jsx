@@ -22,7 +22,9 @@ export function RecordingProvider({ children }) {
           startTime: data.start_time,
           elapsedSeconds: data.elapsed_seconds,
           tracksRecorded: data.tracks_recorded,
-          currentTrack: data.current_track || null
+          currentTrack: data.current_track || null,
+          stopping: data.stopping || false,
+          stoppingInSeconds: data.stopping_in_seconds || null
         })
       } else {
         setIsRecording(false)
