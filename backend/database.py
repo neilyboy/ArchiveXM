@@ -153,8 +153,61 @@ class PlaylistTrack(Base):
 
 
 def create_tables():
-    """Create all database tables"""
+    """Create all database tables and run migrations"""
     Base.metadata.create_all(bind=engine)
+    
+    # Run migrations for existing databases
+    run_migrations()
+
+
+def run_migrations():
+    """Add new columns to existing tables if they don't exist"""
+    from sqlalchemy import inspect, text
+    
+    inspector = inspect(engine)
+    
+    with engine.connect() as conn:
+        # Check and add new columns to credentials table
+        cred_columns = [col['name'] for col in inspector.get_columns('credentials')]
+        
+        if 'name' not in cred_columns:
+            conn.execute(text("ALTER TABLE credentials ADD COLUMN name VARCHAR(100)"))
+            conn.execute(text("UPDATE credentials SET name = 'Primary' WHERE name IS NULL"))
+        if 'is_active' not in cred_columns:
+            conn.execute(text("ALTER TABLE credentials ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+        if 'max_streams' not in cred_columns:
+            conn.execute(text("ALTER TABLE credentials ADD COLUMN max_streams INTEGER DEFAULT 3"))
+        if 'priority' not in cred_columns:
+            conn.execute(text("ALTER TABLE credentials ADD COLUMN priority INTEGER DEFAULT 0"))
+        
+        # Check and add new columns to sessions table
+        session_columns = [col['name'] for col in inspector.get_columns('sessions')]
+        
+        if 'credential_id' not in session_columns:
+            conn.execute(text("ALTER TABLE sessions ADD COLUMN credential_id INTEGER"))
+            # Link existing sessions to first credential
+            conn.execute(text("""
+                UPDATE sessions SET credential_id = (SELECT id FROM credentials LIMIT 1)
+                WHERE credential_id IS NULL
+            """))
+        
+        # Create active_streams table if it doesn't exist
+        if 'active_streams' not in inspector.get_table_names():
+            conn.execute(text("""
+                CREATE TABLE active_streams (
+                    id INTEGER PRIMARY KEY,
+                    credential_id INTEGER,
+                    stream_type VARCHAR(50),
+                    channel_id VARCHAR(100),
+                    started_at DATETIME,
+                    last_heartbeat DATETIME
+                )
+            """))
+            conn.execute(text("CREATE INDEX ix_active_streams_credential_id ON active_streams(credential_id)"))
+        
+        conn.commit()
+    
+    print("✅ Database migrations completed")
 
 
 def get_db():
