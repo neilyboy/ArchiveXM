@@ -177,11 +177,19 @@ class AuthService:
                 if session_type != 'authenticated':
                     print(f"⚠️ Session type: {session_type}")
                 
-                # Session typically lasts about 24 hours
-                expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+                # Use actual token expiration if provided, otherwise default to 24 hours
+                expires_at = None
+                if 'accessTokenExpiresAt' in data:
+                    try:
+                        expires_at = datetime.fromisoformat(data['accessTokenExpiresAt'].replace('Z', '+00:00'))
+                    except:
+                        pass
+                if not expires_at:
+                    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
                 
                 print(f"✅ Authentication successful!")
                 print(f"🎫 Bearer token: {bearer_token[:20]}...")
+                print(f"⏰ Token expires: {expires_at}")
                 
                 return {
                     "success": True,
