@@ -51,12 +51,24 @@ function App() {
   )
 }
 
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  
+  return null
+}
+
 function AppContent({ isConfigured, setIsConfigured }) {
   const location = useLocation()
   const isJukeboxPage = location.pathname === '/jukebox'
 
   return (
     <div className="pb-20"> {/* Padding for bottom player bar */}
+      <ScrollToTop />
       <Routes>
         <Route 
           path="/setup" 
